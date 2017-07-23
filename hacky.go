@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/shurcooL/graphql/internal/hacky/caseconv"
+	"github.com/shurcooL/graphql/ident"
 )
 
 // WARNING: This file contains hacky (but functional) code. It's very ugly.
@@ -107,7 +107,7 @@ func (c *querifyContext) querifyType(w io.Writer, t reflect.Type, inline bool) {
 				if ok {
 					io.WriteString(w, value)
 				} else {
-					io.WriteString(w, caseconv.MixedCapsToLowerCamelCase(f.Name))
+					io.WriteString(w, ident.ParseMixedCaps(f.Name).ToLowerCamelCase())
 				}
 			}
 			c.querifyType(w, f.Type, inlineField)
