@@ -41,7 +41,7 @@ func main() {
 	)
 	httpClient := oauth2.NewClient(context.Background(), src)
 
-	client := githubql.NewClient("https://example.com/graphql", httpClient)
+	client := graphql.NewClient("https://example.com/graphql", httpClient)
 	// Use client...
 ```
 
