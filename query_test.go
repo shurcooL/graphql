@@ -219,7 +219,7 @@ func TestConstructQuery(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		qctx := &querifyContext{
+		qctx := &queryContext{
 			Scalars: []reflect.Type{
 				reflect.TypeOf(DateTime{}),
 				reflect.TypeOf(URI{}),
@@ -260,7 +260,7 @@ func TestConstructMutation(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		got := constructMutation(&querifyContext{}, tc.inV, tc.inVariables)
+		got := constructMutation(&queryContext{}, tc.inV, tc.inVariables)
 		if got != tc.want {
 			t.Errorf("\ngot:  %q\nwant: %q\n", got, tc.want)
 		}

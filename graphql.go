@@ -17,7 +17,7 @@ type Client struct {
 	url        string // GraphQL server URL.
 	httpClient *http.Client
 
-	qctx *querifyContext
+	qctx *queryContext
 }
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
@@ -32,7 +32,7 @@ func NewClient(url string, httpClient *http.Client, scalars []reflect.Type) *Cli
 		url:        url,
 		httpClient: httpClient,
 
-		qctx: &querifyContext{
+		qctx: &queryContext{
 			Scalars: scalars,
 		},
 	}
