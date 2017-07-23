@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/shurcooL/go/ctxhttp"
 	"github.com/shurcooL/graphql/internal/jsonutil"
@@ -15,17 +16,25 @@ import (
 type Client struct {
 	url        string // GraphQL server URL.
 	httpClient *http.Client
+
+	qctx *querifyContext
 }
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
 // If httpClient is nil, then http.DefaultClient is used.
-func NewClient(url string, httpClient *http.Client) *Client {
+// scalars optionally specifies types that are scalars (this matters
+// when constructing queries from types, scalars are never expanded).
+func NewClient(url string, httpClient *http.Client, scalars []reflect.Type) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 	return &Client{
 		url:        url,
 		httpClient: httpClient,
+
+		qctx: &querifyContext{
+			Scalars: scalars,
+		},
 	}
 }
 
@@ -48,9 +57,9 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	var query string
 	switch op {
 	case queryOperation:
-		query = constructQuery(v, variables)
+		query = constructQuery(c.qctx, v, variables)
 	case mutationOperation:
-		query = constructMutation(v, variables)
+		query = constructMutation(c.qctx, v, variables)
 	}
 	in := struct {
 		Query     string                 `json:"query"`

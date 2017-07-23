@@ -15,16 +15,16 @@ import (
 //          first (such as ensuring the API design will scale and work out), and
 //          saving time by deferring this work.
 
-func constructQuery(v interface{}, variables map[string]interface{}) string {
-	query := querify(v)
+func constructQuery(qctx *querifyContext, v interface{}, variables map[string]interface{}) string {
+	query := qctx.Querify(v)
 	if variables != nil {
 		return "query(" + queryArguments(variables) + ")" + query
 	}
 	return query
 }
 
-func constructMutation(v interface{}, variables map[string]interface{}) string {
-	query := querify(v)
+func constructMutation(qctx *querifyContext, v interface{}, variables map[string]interface{}) string {
+	query := qctx.Querify(v)
 	if variables != nil {
 		return "mutation(" + queryArguments(variables) + ")" + query
 	}
@@ -64,21 +64,32 @@ func queryArguments(variables map[string]interface{}) string {
 	return s
 }
 
-// querify uses querifyType, which recursively constructs
+type querifyContext struct {
+	// Scalars are Go types that map to GraphQL scalars, and therefore we don't want to expand them.
+	Scalars []reflect.Type
+}
+
+// Querify uses querifyType, which recursively constructs
 // a minified query string from the provided struct v.
 //
 // E.g., struct{Foo Int, Bar *Boolean} -> "{foo,bar}".
-func querify(v interface{}) string {
+func (c *querifyContext) Querify(v interface{}) string {
 	var buf bytes.Buffer
-	querifyType(&buf, reflect.TypeOf(v), false)
+	c.querifyType(&buf, reflect.TypeOf(v), false)
 	return buf.String()
 }
 
-func querifyType(w io.Writer, t reflect.Type, inline bool) {
+func (c *querifyContext) querifyType(w io.Writer, t reflect.Type, inline bool) {
 	switch t.Kind() {
 	case reflect.Ptr, reflect.Slice:
-		querifyType(w, t.Elem(), false)
+		c.querifyType(w, t.Elem(), false)
 	case reflect.Struct:
+		// Special handling of scalar struct types. Don't expand them.
+		for _, scalar := range c.Scalars {
+			if t == scalar {
+				return
+			}
+		}
 		if !inline {
 			io.WriteString(w, "{")
 		}
@@ -99,7 +110,7 @@ func querifyType(w io.Writer, t reflect.Type, inline bool) {
 					io.WriteString(w, caseconv.MixedCapsToLowerCamelCase(f.Name))
 				}
 			}
-			querifyType(w, f.Type, inlineField)
+			c.querifyType(w, f.Type, inlineField)
 		}
 		if !inline {
 			io.WriteString(w, "}")

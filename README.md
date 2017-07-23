@@ -24,7 +24,7 @@ Usage
 Construct a GraphQL client, specifying the GraphQL server URL. Then, you can use it to make GraphQL queries and mutations.
 
 ```Go
-client := graphql.NewClient("https://example.com/graphql", nil)
+client := graphql.NewClient("https://example.com/graphql", nil, nil)
 // Use client...
 ```
 
@@ -41,7 +41,7 @@ func main() {
 	)
 	httpClient := oauth2.NewClient(context.Background(), src)
 
-	client := graphql.NewClient("https://example.com/graphql", httpClient)
+	client := graphql.NewClient("https://example.com/graphql", httpClient, nil)
 	// Use client...
 ```
 
