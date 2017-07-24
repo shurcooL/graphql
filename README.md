@@ -207,9 +207,11 @@ fmt.Printf("Created a %v star review: %v\n", m.CreateReview.Stars, m.CreateRevie
 Directories
 -----------
 
-| Path                                                                                   | Synopsis                                                                          |
-|----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
-| [example/graphqldev](https://godoc.org/github.com/shurcooL/graphql/example/graphqldev) | graphqldev is a test program currently being used for developing graphql package. |
+| Path                                                                                   | Synopsis                                                                                                        |
+|----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| [example/graphqldev](https://godoc.org/github.com/shurcooL/graphql/example/graphqldev) | graphqldev is a test program currently being used for developing graphql package.                               |
+| [ident](https://godoc.org/github.com/shurcooL/graphql/ident)                           | Package ident provides functions for parsing and converting identifier names between various naming convention. |
+| [internal/jsonutil](https://godoc.org/github.com/shurcooL/graphql/internal/jsonutil)   | Package jsonutil provides a function for decoding JSON into a GraphQL query data structure.                     |
 
 License
 -------

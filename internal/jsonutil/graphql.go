@@ -1,3 +1,5 @@
+// Package jsonutil provides a function for decoding JSON
+// into a GraphQL query data structure.
 package jsonutil
 
 import (

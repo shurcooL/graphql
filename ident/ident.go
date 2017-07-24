@@ -1,6 +1,6 @@
 // Package ident provides functions for parsing and converting identifier names
 // between various naming convention. It has support for MixedCaps, lowerCamelCase,
-// and SCREAMING_SNAKE_CASE naming convention.
+// and SCREAMING_SNAKE_CASE naming conventions.
 package ident
 
 import (
