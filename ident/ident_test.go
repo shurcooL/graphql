@@ -40,6 +40,8 @@ func TestParseMixedCaps(t *testing.T) {
 		{in: "SetURLHTML", want: ident.Name{"Set", "URL", "HTML"}},
 		{in: "HTTPSQL", want: ident.Name{"HTTP", "SQL"}},
 		{in: "HTTPSSQL", want: ident.Name{"HTTPS", "SQL"}},
+		{in: "UserIDs", want: ident.Name{"User", "IDs"}},
+		{in: "TeamIDsSorted", want: ident.Name{"Team", "IDs", "Sorted"}},
 	}
 	for _, tc := range tests {
 		got := ident.ParseMixedCaps(tc.in)
@@ -122,9 +124,33 @@ func TestMixedCapsToLowerCamelCase(t *testing.T) {
 		{in: "CreatedAt", want: "createdAt"},
 		{in: "Login", want: "login"},
 		{in: "ResetAt", want: "resetAt"},
+		{in: "UserIDs", want: "userIds"},
+		{in: "TeamIDsSorted", want: "teamIdsSorted"},
 	}
 	for _, tc := range tests {
 		got := ident.ParseMixedCaps(tc.in).ToLowerCamelCase()
+		if got != tc.want {
+			t.Errorf("got: %q, want: %q", got, tc.want)
+		}
+	}
+}
+
+func TestLowerCamelCaseToMixedCaps(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{in: "databaseId", want: "DatabaseID"},
+		{in: "url", want: "URL"},
+		{in: "id", want: "ID"},
+		{in: "createdAt", want: "CreatedAt"},
+		{in: "login", want: "Login"},
+		{in: "resetAt", want: "ResetAt"},
+		{in: "userIds", want: "UserIDs"},
+		{in: "teamIdsSorted", want: "TeamIDsSorted"},
+	}
+	for _, tc := range tests {
+		got := ident.ParseLowerCamelCase(tc.in).ToMixedCaps()
 		if got != tc.want {
 			t.Errorf("got: %q, want: %q", got, tc.want)
 		}

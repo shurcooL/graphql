@@ -15,7 +15,7 @@ import (
 func ParseMixedCaps(name string) Name {
 	var words Name
 
-	// Split name at any lower -> upper or upper -> upper+lower transitions.
+	// Split name at any lower -> Upper or Upper -> Upper,lower transitions.
 	// Check each word for initialisms.
 	runes := []rune(name)
 	w, i := 0, 0 // Index of start of word, scan.
@@ -24,11 +24,15 @@ func ParseMixedCaps(name string) Name {
 		if i+1 == len(runes) {
 			eow = true
 		} else if unicode.IsLower(runes[i]) && unicode.IsUpper(runes[i+1]) {
-			// Lower -> upper.
+			// lower -> Upper.
 			eow = true
 		} else if i+2 < len(runes) && unicode.IsUpper(runes[i]) && unicode.IsUpper(runes[i+1]) && unicode.IsLower(runes[i+2]) {
-			// Upper -> upper+lower. End of acronym, followed by a word.
+			// Upper -> Upper,lower. End of acronym, followed by a word.
 			eow = true
+
+			if string(runes[i:i+3]) == "IDs" { // Special case, plural form of ID initialism.
+				eow = false
+			}
 		}
 		i++
 		if !eow {
@@ -55,7 +59,7 @@ func ParseMixedCaps(name string) Name {
 func ParseLowerCamelCase(name string) Name {
 	var words Name
 
-	// Split name at any upper letters.
+	// Split name at any Upper letters.
 	runes := []rune(name)
 	w, i := 0, 0 // Index of start of word, scan.
 	for i+1 <= len(runes) {
@@ -119,6 +123,10 @@ type Name []string
 // E.g., "ClientMutationID".
 func (n Name) ToMixedCaps() string {
 	for i, word := range n {
+		if strings.EqualFold(word, "IDs") { // Special case, plural form of ID initialism.
+			n[i] = "IDs"
+			continue
+		}
 		if initialism, ok := isInitialism(word); ok {
 			n[i] = initialism
 			continue
