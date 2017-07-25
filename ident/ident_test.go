@@ -124,6 +124,9 @@ func TestMixedCapsToLowerCamelCase(t *testing.T) {
 		{in: "CreatedAt", want: "createdAt"},
 		{in: "Login", want: "login"},
 		{in: "ResetAt", want: "resetAt"},
+		{in: "ID", want: "id"},
+		{in: "IDs", want: "ids"},
+		{in: "IDsAndNames", want: "idsAndNames"},
 		{in: "UserIDs", want: "userIds"},
 		{in: "TeamIDsSorted", want: "teamIdsSorted"},
 	}
@@ -146,6 +149,9 @@ func TestLowerCamelCaseToMixedCaps(t *testing.T) {
 		{in: "createdAt", want: "CreatedAt"},
 		{in: "login", want: "Login"},
 		{in: "resetAt", want: "ResetAt"},
+		{in: "id", want: "ID"},
+		{in: "ids", want: "IDs"},
+		{in: "idsAndNames", want: "IDsAndNames"},
 		{in: "userIds", want: "UserIDs"},
 		{in: "teamIdsSorted", want: "TeamIDsSorted"},
 	}
