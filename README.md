@@ -185,8 +185,8 @@ var m struct {
 variables := map[string]interface{}{
 	"ep": starwars.Episode("JEDI"),
 	"review": starwars.ReviewInput{
-		Stars:      graphq.Int(5),
-		Commentary: graphq.String("This is a great movie!"),
+		Stars:      graphql.Int(5),
+		Commentary: graphql.String("This is a great movie!"),
 	},
 }
 ```
