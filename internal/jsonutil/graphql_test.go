@@ -266,3 +266,71 @@ func TestUnmarshalGraphQL_union(t *testing.T) {
 		t.Error("not equal")
 	}
 }
+
+// Issue https://github.com/shurcooL/githubql/issues/18.
+func TestUnmarshalGraphQL_arrayInsideInlineFragment(t *testing.T) {
+	/*
+		query {
+			search(type: ISSUE, first: 1, query: "type:pr repo:owner/name") {
+				nodes {
+					... on PullRequest {
+						commits(last: 1) {
+							nodes {
+								url
+							}
+						}
+					}
+				}
+			}
+		}
+	*/
+	type query struct {
+		Search struct {
+			Nodes []struct {
+				PullRequest struct {
+					Commits struct {
+						Nodes []struct {
+							URL string `graphql:"url"`
+						}
+					} `graphql:"commits(last: 1)"`
+				} `graphql:"... on PullRequest"`
+			}
+		} `graphql:"search(type: ISSUE, first: 1, query: \"type:pr repo:owner/name\")"`
+	}
+	var got query
+	err := jsonutil.UnmarshalGraphQL([]byte(`{
+		"search": {
+			"nodes": [
+				{
+					"commits": {
+						"nodes": [
+							{
+								"url": "https://example.org/commit/49e1"
+							}
+						]
+					}
+				}
+			]
+		}
+	}`), &got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want query
+	want.Search.Nodes = make([]struct {
+		PullRequest struct {
+			Commits struct {
+				Nodes []struct {
+					URL string `graphql:"url"`
+				}
+			} `graphql:"commits(last: 1)"`
+		} `graphql:"... on PullRequest"`
+	}, 1)
+	want.Search.Nodes[0].PullRequest.Commits.Nodes = make([]struct {
+		URL string `graphql:"url"`
+	}, 1)
+	want.Search.Nodes[0].PullRequest.Commits.Nodes[0].URL = "https://example.org/commit/49e1"
+	if !reflect.DeepEqual(got, want) {
+		t.Error("not equal")
+	}
+}
