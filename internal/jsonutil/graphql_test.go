@@ -83,19 +83,25 @@ func TestUnmarshalGraphQL_jsonTag(t *testing.T) {
 func TestUnmarshalGraphQL_array(t *testing.T) {
 	type query struct {
 		Foo []graphql.String
+		Bar []graphql.String
+		Baz []graphql.String
 	}
 	var got query
 	err := jsonutil.UnmarshalGraphQL([]byte(`{
 		"foo": [
 			"bar",
 			"baz"
-		]
+		],
+		"bar": [],
+		"baz": null
 	}`), &got)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := query{
 		Foo: []graphql.String{"bar", "baz"},
+		Bar: []graphql.String{},
+		Baz: []graphql.String(nil),
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Error("not equal")

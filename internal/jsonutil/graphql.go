@@ -205,7 +205,7 @@ func (d *decoder) decode() error {
 					if v.Kind() != reflect.Slice {
 						continue
 					}
-					v.Set(reflect.Zero(v.Type())) // v = zero(v).
+					v.Set(reflect.MakeSlice(v.Type(), 0, 0)) // v = make(T, 0, 0).
 				}
 			case '}', ']':
 				// End of object or array.
