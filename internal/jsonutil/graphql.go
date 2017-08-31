@@ -172,10 +172,9 @@ func (d *decoder) decode() error {
 				for len(frontier) > 0 {
 					v := frontier[0]
 					frontier = frontier[1:]
-					// TODO: Needed? Add a test case if so.
-					//if v.Kind() == reflect.Ptr {
-					//	v = v.Elem()
-					//}
+					if v.Kind() == reflect.Ptr {
+						v = v.Elem()
+					}
 					if v.Kind() != reflect.Struct {
 						continue
 					}

@@ -195,6 +195,46 @@ func TestUnmarshalGraphQL_objectPointerArray(t *testing.T) {
 	}
 }
 
+func TestUnmarshalGraphQL_pointerWithInlineFragment(t *testing.T) {
+	type actor struct {
+		User struct {
+			DatabaseID uint64
+		} `graphql:"... on User"`
+		Login string
+	}
+	type query struct {
+		Author actor
+		Editor *actor
+	}
+	var got query
+	err := jsonutil.UnmarshalGraphQL([]byte(`{
+		"author": {
+			"databaseId": 1,
+			"login": "test1"
+		},
+		"editor": {
+			"databaseId": 2,
+			"login": "test2"
+		}
+	}`), &got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want query
+	want.Author = actor{
+		User:  struct{ DatabaseID uint64 }{1},
+		Login: "test1",
+	}
+	want.Editor = &actor{
+		User:  struct{ DatabaseID uint64 }{2},
+		Login: "test2",
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Error("not equal")
+	}
+}
+
 func TestUnmarshalGraphQL_multipleValues(t *testing.T) {
 	type query struct {
 		Foo graphql.String
