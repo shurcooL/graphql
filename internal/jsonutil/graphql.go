@@ -136,9 +136,9 @@ func (d *decoder) decode() error {
 		}
 
 		switch tok := tok.(type) {
-
-		// Values.
 		case string, json.Number, bool, nil:
+			// Value.
+
 			for i := range d.vs {
 				v := d.vs[i][len(d.vs[i])-1]
 				if !v.IsValid() {
@@ -151,10 +151,11 @@ func (d *decoder) decode() error {
 			}
 			d.popAllVs()
 
-		// Start/end of object/array.
 		case json.Delim:
 			switch tok {
 			case '{':
+				// Start of object.
+
 				d.pushState(tok)
 
 				frontier := make([]reflect.Value, len(d.vs)) // Places to look for GraphQL fragments/embedded structs.
@@ -187,6 +188,8 @@ func (d *decoder) decode() error {
 					}
 				}
 			case '[':
+				// Start of array.
+
 				d.pushState(tok)
 
 				for i := range d.vs {
@@ -206,6 +209,7 @@ func (d *decoder) decode() error {
 					v.Set(reflect.Zero(v.Type())) // v = zero(v).
 				}
 			case '}', ']':
+				// End of object or array.
 				d.popAllVs()
 				d.popState()
 			default:
