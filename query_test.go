@@ -2,7 +2,6 @@ package graphql
 
 import (
 	"net/url"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -217,15 +216,20 @@ func TestConstructQuery(t *testing.T) {
 			}(),
 			want: `{actor{login,avatarUrl,url},createdAt,... on IssueComment{body},currentTitle,previousTitle,label{name,color}}`,
 		},
+		{
+			inV: struct {
+				Viewer struct {
+					Login      string
+					CreatedAt  time.Time
+					ID         interface{}
+					DatabaseID int
+				}
+			}{},
+			want: `{viewer{login,createdAt,id,databaseId}}`,
+		},
 	}
 	for _, tc := range tests {
-		qctx := &queryContext{
-			Scalars: []reflect.Type{
-				reflect.TypeOf(DateTime{}),
-				reflect.TypeOf(URI{}),
-			},
-		}
-		got := constructQuery(qctx, tc.inV, tc.inVariables)
+		got := constructQuery(tc.inV, tc.inVariables)
 		if got != tc.want {
 			t.Errorf("\ngot:  %q\nwant: %q\n", got, tc.want)
 		}
@@ -260,7 +264,7 @@ func TestConstructMutation(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		got := constructMutation(&queryContext{}, tc.inV, tc.inVariables)
+		got := constructMutation(tc.inV, tc.inVariables)
 		if got != tc.want {
 			t.Errorf("\ngot:  %q\nwant: %q\n", got, tc.want)
 		}
@@ -310,6 +314,8 @@ type (
 	// URI is an RFC 3986, RFC 3987, and RFC 6570 (level 4) compliant URI.
 	URI struct{ *url.URL }
 )
+
+func (u *URI) UnmarshalJSON(data []byte) error { panic("mock implementation") }
 
 // IssueState represents the possible states of an issue.
 type IssueState string
