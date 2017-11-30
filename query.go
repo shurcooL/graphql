@@ -51,8 +51,8 @@ func queryArguments(variables map[string]interface{}) string {
 	return buf.String()
 }
 
-// writeArgumentType writes a minified GraphQL type for t to w. value indicates whether
-// t is a value (required) type or pointer (optional) type.
+// writeArgumentType writes a minified GraphQL type for t to w.
+// value indicates whether t is a value (required) type or pointer (optional) type.
 // If value is true, then "!" is written at the end of t.
 func writeArgumentType(w io.Writer, t reflect.Type, value bool) {
 	if t.Kind() == reflect.Ptr {
@@ -92,8 +92,8 @@ func query(v interface{}) string {
 	return buf.String()
 }
 
-// writeQuery writes a minified query for t to w. If inline is true,
-// the struct fields of t are inlined into parent struct.
+// writeQuery writes a minified query for t to w.
+// If inline is true, the struct fields of t are inlined into parent struct.
 func writeQuery(w io.Writer, t reflect.Type, inline bool) {
 	switch t.Kind() {
 	case reflect.Ptr, reflect.Slice:
