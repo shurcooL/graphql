@@ -273,7 +273,6 @@ func TestConstructMutation(t *testing.T) {
 
 func TestQueryArguments(t *testing.T) {
 	tests := []struct {
-		name string
 		in   map[string]interface{}
 		want string
 	}{
@@ -282,26 +281,43 @@ func TestQueryArguments(t *testing.T) {
 			want: "$a:Int!$b:Boolean",
 		},
 		{
-			in:   map[string]interface{}{"states": []IssueState{IssueStateOpen, IssueStateClosed}},
-			want: "$states:[IssueState!]",
+			in: map[string]interface{}{
+				"required": []IssueState{IssueStateOpen, IssueStateClosed},
+				"optional": &[]IssueState{IssueStateOpen, IssueStateClosed},
+			},
+			want: "$optional:[IssueState!]$required:[IssueState!]!",
 		},
 		{
-			in:   map[string]interface{}{"states": []IssueState(nil)},
-			want: "$states:[IssueState!]",
+			in: map[string]interface{}{
+				"required": []IssueState(nil),
+				"optional": (*[]IssueState)(nil),
+			},
+			want: "$optional:[IssueState!]$required:[IssueState!]!",
 		},
 		{
-			in:   map[string]interface{}{"states": [...]IssueState{IssueStateOpen, IssueStateClosed}},
-			want: "$states:[IssueState!]",
+			in: map[string]interface{}{
+				"required": [...]IssueState{IssueStateOpen, IssueStateClosed},
+				"optional": &[...]IssueState{IssueStateOpen, IssueStateClosed},
+			},
+			want: "$optional:[IssueState!]$required:[IssueState!]!",
 		},
 		{
-			in:   map[string]interface{}{"id": ID("someid")},
+			in:   map[string]interface{}{"id": ID("someID")},
 			want: "$id:ID!",
 		},
+		{
+			in:   map[string]interface{}{"ids": []ID{"someID", "anotherID"}},
+			want: `$ids:[ID!]!`,
+		},
+		{
+			in:   map[string]interface{}{"ids": &[]ID{"someID", "anotherID"}},
+			want: `$ids:[ID!]`,
+		},
 	}
-	for _, tc := range tests {
+	for i, tc := range tests {
 		got := queryArguments(tc.in)
 		if got != tc.want {
-			t.Errorf("%s: got: %q, want: %q", tc.name, got, tc.want)
+			t.Errorf("test case %d:\n got: %q\nwant: %q", i, got, tc.want)
 		}
 	}
 }
