@@ -63,12 +63,12 @@ func writeArgumentType(w io.Writer, t reflect.Type, value bool) {
 
 	switch t.Kind() {
 	case reflect.Slice, reflect.Array:
-		// List. E.g., "[Int!]".
+		// List. E.g., "[Int]".
 		io.WriteString(w, "[")
 		writeArgumentType(w, t.Elem(), true)
 		io.WriteString(w, "]")
 	default:
-		// Named type. E.g., "Int!".
+		// Named type. E.g., "Int".
 		name := t.Name()
 		if name == "string" { // HACK: Workaround for https://github.com/shurcooL/githubql/issues/12.
 			name = "ID"
