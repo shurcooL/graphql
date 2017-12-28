@@ -10,6 +10,7 @@ func TestConstructQuery(t *testing.T) {
 	tests := []struct {
 		inV         interface{}
 		inVariables map[string]interface{}
+		inName      string
 		want        string
 	}{
 		{
@@ -188,6 +189,29 @@ func TestConstructQuery(t *testing.T) {
 			},
 			want: `query($issueNumber:Int!$repositoryName:String!$repositoryOwner:String!){repository(owner: $repositoryOwner, name: $repositoryName){issue(number: $issueNumber){reactionGroups{users(first:10){nodes{login}}}}}}`,
 		},
+		// Query with variables and operation name
+		{
+			inV: struct {
+				Repository struct {
+					Issue struct {
+						ReactionGroups []struct {
+							Users struct {
+								Nodes []struct {
+									Login String
+								}
+							} `graphql:"users(first:10)"`
+						}
+					} `graphql:"issue(number: $issueNumber)"`
+				} `graphql:"repository(owner: $repositoryOwner, name: $repositoryName)"`
+			}{},
+			inName: "MyOperationName",
+			inVariables: map[string]interface{}{
+				"repositoryOwner": String("shurcooL-test"),
+				"repositoryName":  String("test-repo"),
+				"issueNumber":     Int(1),
+			},
+			want: `query MyOperationName($issueNumber:Int!$repositoryName:String!$repositoryOwner:String!){repository(owner: $repositoryOwner, name: $repositoryName){issue(number: $issueNumber){reactionGroups{users(first:10){nodes{login}}}}}}`,
+		},
 		// Embedded structs without graphql tag should be inlined in query.
 		{
 			inV: func() interface{} {
@@ -227,9 +251,22 @@ func TestConstructQuery(t *testing.T) {
 			}{},
 			want: `{viewer{login,createdAt,id,databaseId}}`,
 		},
+		// Query With Operation Name
+		{
+			inV: struct {
+				Viewer struct {
+					Login      string
+					CreatedAt  time.Time
+					ID         interface{}
+					DatabaseID int
+				}
+			}{},
+			inName: "MyOperationName",
+			want:   `query MyOperationName{viewer{login,createdAt,id,databaseId}}`,
+		},
 	}
 	for _, tc := range tests {
-		got := constructQuery(tc.inV, tc.inVariables)
+		got := constructQuery(tc.inV, tc.inName, tc.inVariables)
 		if got != tc.want {
 			t.Errorf("\ngot:  %q\nwant: %q\n", got, tc.want)
 		}
@@ -240,6 +277,7 @@ func TestConstructMutation(t *testing.T) {
 	tests := []struct {
 		inV         interface{}
 		inVariables map[string]interface{}
+		inName      string
 		want        string
 	}{
 		{
@@ -262,9 +300,30 @@ func TestConstructMutation(t *testing.T) {
 			},
 			want: `mutation($input:AddReactionInput!){addReaction(input:$input){subject{reactionGroups{users{totalCount}}}}}`,
 		},
+		{
+			inV: struct {
+				AddReaction struct {
+					Subject struct {
+						ReactionGroups []struct {
+							Users struct {
+								TotalCount Int
+							}
+						}
+					}
+				} `graphql:"addReaction(input:$input)"`
+			}{},
+			inName: "MyOperationName",
+			inVariables: map[string]interface{}{
+				"input": AddReactionInput{
+					SubjectID: "MDU6SXNzdWUyMzE1MjcyNzk=",
+					Content:   ReactionContentThumbsUp,
+				},
+			},
+			want: `mutation MyOperationName($input:AddReactionInput!){addReaction(input:$input){subject{reactionGroups{users{totalCount}}}}}`,
+		},
 	}
 	for _, tc := range tests {
-		got := constructMutation(tc.inV, tc.inVariables)
+		got := constructMutation(tc.inV, tc.inName, tc.inVariables)
 		if got != tc.want {
 			t.Errorf("\ngot:  %q\nwant: %q\n", got, tc.want)
 		}

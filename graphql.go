@@ -29,28 +29,45 @@ func NewClient(url string, httpClient *http.Client) *Client {
 	}
 }
 
+// Empty operation name for anonymous queries
+var noOpName = ""
+
 // Query executes a single GraphQL query request,
 // with a query derived from q, populating the response into it.
 // q should be a pointer to struct that corresponds to the GraphQL schema.
 func (c *Client) Query(ctx context.Context, q interface{}, variables map[string]interface{}) error {
-	return c.do(ctx, queryOperation, q, variables)
+	return c.do(ctx, queryOperation, noOpName, q, variables)
+}
+
+// QueryByName executes a single GraphQL query request with the given `operationName`,
+// with a query derived from q, populating the response into it.
+// q should be a pointer to struct that corresponds to the GraphQL schema.
+func (c *Client) QueryByName(ctx context.Context, operationName string, q interface{}, variables map[string]interface{}) error {
+	return c.do(ctx, queryOperation, operationName, q, variables)
 }
 
 // Mutate executes a single GraphQL mutation request,
 // with a mutation derived from m, populating the response into it.
 // m should be a pointer to struct that corresponds to the GraphQL schema.
 func (c *Client) Mutate(ctx context.Context, m interface{}, variables map[string]interface{}) error {
-	return c.do(ctx, mutationOperation, m, variables)
+	return c.do(ctx, mutationOperation, noOpName, m, variables)
+}
+
+// MutateByName executes a single GraphQL mutation request with the given `operationName`,
+// with a mutation derived from m, populating the response into it.
+// m should be a pointer to struct that corresponds to the GraphQL schema.
+func (c *Client) MutateByName(ctx context.Context, operationName string, m interface{}, variables map[string]interface{}) error {
+	return c.do(ctx, mutationOperation, operationName, m, variables)
 }
 
 // do executes a single GraphQL operation.
-func (c *Client) do(ctx context.Context, op operationType, v interface{}, variables map[string]interface{}) error {
+func (c *Client) do(ctx context.Context, op operationType, opName string, v interface{}, variables map[string]interface{}) error {
 	var query string
 	switch op {
 	case queryOperation:
-		query = constructQuery(v, variables)
+		query = constructQuery(v, opName, variables)
 	case mutationOperation:
-		query = constructMutation(v, variables)
+		query = constructMutation(v, opName, variables)
 	}
 	in := struct {
 		Query     string                 `json:"query"`

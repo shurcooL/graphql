@@ -81,6 +81,10 @@ fmt.Println(query.Me.Name)
 // Output: Luke Skywalker
 ```
 
+### Operation Names
+
+To create [named queries](http://graphql.org/learn/queries/#operation-name), use the variants `client.QueryByName` and `client.MutateByName`.
+
 ### Arguments and Variables
 
 Often, you'll want to specify arguments on some fields. You can use the `graphql` struct field tag for this.

@@ -3,6 +3,7 @@ package graphql
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"reflect"
 	"sort"
@@ -10,20 +11,38 @@ import (
 	"github.com/shurcooL/graphql/ident"
 )
 
-func constructQuery(v interface{}, variables map[string]interface{}) string {
+func constructQuery(v interface{}, opName string, variables map[string]interface{}) string {
 	query := query(v)
 	if variables != nil {
-		return "query(" + queryArguments(variables) + ")" + query
+		if opName == noOpName {
+			return fmt.Sprintf("query(%s)%s", queryArguments(variables), query)
+		}
+
+		return fmt.Sprintf("query %s(%s)%s", opName, queryArguments(variables), query)
 	}
-	return query
+
+	if opName == noOpName {
+		return query
+	}
+
+	return "query " + opName + query
 }
 
-func constructMutation(v interface{}, variables map[string]interface{}) string {
+func constructMutation(v interface{}, opName string, variables map[string]interface{}) string {
 	query := query(v)
 	if variables != nil {
-		return "mutation(" + queryArguments(variables) + ")" + query
+		if opName == noOpName {
+			return fmt.Sprintf("mutation(%s)%s", queryArguments(variables), query)
+		}
+
+		return fmt.Sprintf("mutation %s(%s)%s", opName, queryArguments(variables), query)
 	}
-	return "mutation" + query
+
+	if opName == noOpName {
+		return "mutation" + query
+	}
+
+	return "mutation " + opName + query
 }
 
 // queryArguments constructs a minified arguments string for variables.
