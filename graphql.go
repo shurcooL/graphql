@@ -33,25 +33,34 @@ func NewClient(url string, httpClient *http.Client) *Client {
 // with a query derived from q, populating the response into it.
 // q should be a pointer to struct that corresponds to the GraphQL schema.
 func (c *Client) Query(ctx context.Context, q interface{}, variables map[string]interface{}) error {
-	return c.do(ctx, queryOperation, q, variables)
+	return c.do(ctx, q, constructQuery(q, variables), variables)
+}
+
+// QueryCustom executes a single GraphQL query request,
+// with the query provided as a string, populating the response into q.
+// slot should be a pointer to struct that corresponds to the GraphQL schema,
+// and the variables in the query must be provided by the variables map.
+func (c *Client) QueryCustom(ctx context.Context, q interface{}, query string, variables map[string]interface{}) error {
+	return c.do(ctx, q, query, variables)
 }
 
 // Mutate executes a single GraphQL mutation request,
 // with a mutation derived from m, populating the response into it.
 // m should be a pointer to struct that corresponds to the GraphQL schema.
 func (c *Client) Mutate(ctx context.Context, m interface{}, variables map[string]interface{}) error {
-	return c.do(ctx, mutationOperation, m, variables)
+	return c.do(ctx, m, constructMutation(m, variables), variables)
+}
+
+// MutateCustom executes a single GraphQL mutation request,
+// with the query provided as a string, populating the response into m.
+// m should be a pointer to struct that corresponds to the GraphQL schema,
+// and the variables in the query must be provided by the variables map.
+func (c *Client) MutateCustom(ctx context.Context, m interface{}, query string, variables map[string]interface{}) error {
+	return c.do(ctx, m, query, variables)
 }
 
 // do executes a single GraphQL operation.
-func (c *Client) do(ctx context.Context, op operationType, v interface{}, variables map[string]interface{}) error {
-	var query string
-	switch op {
-	case queryOperation:
-		query = constructQuery(v, variables)
-	case mutationOperation:
-		query = constructMutation(v, variables)
-	}
+func (c *Client) do(ctx context.Context, v interface{}, query string, variables map[string]interface{}) error {
 	in := struct {
 		Query     string                 `json:"query"`
 		Variables map[string]interface{} `json:"variables,omitempty"`
@@ -107,11 +116,3 @@ type errors []struct {
 func (e errors) Error() string {
 	return e[0].Message
 }
-
-type operationType uint8
-
-const (
-	queryOperation operationType = iota
-	mutationOperation
-	//subscriptionOperation // Unused.
-)
