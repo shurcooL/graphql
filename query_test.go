@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"fmt"
 	"net/url"
 	"testing"
 	"time"
@@ -320,6 +321,40 @@ func TestQueryArguments(t *testing.T) {
 			t.Errorf("test case %d:\n got: %q\nwant: %q", i, got, tc.want)
 		}
 	}
+}
+
+func TestConstructRecursiveQuery(t *testing.T) {
+	t.Run("recursive types should panic", func(t *testing.T) {
+		type Recurser struct {
+			Children []Recurser
+		}
+		err := gatherPanic(func() {
+			got := query(Recurser{})
+			if got != "" {
+				t.Errorf("\ngot:  %q\nwant: an error!\n", got)
+			}
+		})
+		expect := fmt.Errorf("cycle found")
+		if err.Error() != expect.Error() {
+			t.Errorf("\ngot err:  %q\nwant err: %q\n", err, expect)
+		}
+	})
+}
+
+func gatherPanic(fn func()) (err error) {
+	defer func() {
+		rcvr := recover()
+		switch e := rcvr.(type) {
+		case nil:
+			err = nil
+		case error:
+			err = e
+		default:
+			err = fmt.Errorf("non-error panic: %v", e)
+		}
+	}()
+	fn()
+	return
 }
 
 // Custom GraphQL types for testing.
