@@ -3,9 +3,11 @@ package graphql
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"reflect"
 	"sort"
+	"strconv"
 
 	"github.com/shurcooL/graphql/ident"
 )
@@ -122,7 +124,7 @@ func writeQuery(w io.Writer, t reflect.Type, visited map[edge]int, inline bool) 
 			// Check how many times we've traversed this before (recursion limit).
 			edge := edge{t, i}
 			visited[edge]++
-			if visited[edge] >= 3 { // placeholder hardcoded limit for trying this out
+			if visited[edge] > getRecursionLimit(f) {
 				continue
 			}
 
@@ -142,6 +144,21 @@ func writeQuery(w io.Writer, t reflect.Type, visited map[edge]int, inline bool) 
 			io.WriteString(w, "}")
 		}
 	}
+}
+
+func getRecursionLimit(f reflect.StructField) int {
+	value, ok := f.Tag.Lookup("graphql-recurse")
+	if !ok {
+		return 1
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil {
+		panic(fmt.Errorf("graphql-recurse tag should be int: %s", err))
+	}
+	if n < 2 {
+		panic(fmt.Errorf("graphql-recurse tag only makes sense for values greater than 1"))
+	}
+	return n
 }
 
 var jsonUnmarshaler = reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
