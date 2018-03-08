@@ -11,7 +11,7 @@ import (
 )
 
 func constructQuery(v interface{}, variables map[string]interface{}) string {
-	query := query(v)
+	query := GenerateQueryFields(v)
 	if variables != nil {
 		return "query(" + queryArguments(variables) + ")" + query
 	}
@@ -19,7 +19,7 @@ func constructQuery(v interface{}, variables map[string]interface{}) string {
 }
 
 func constructMutation(v interface{}, variables map[string]interface{}) string {
-	query := query(v)
+	query := GenerateQueryFields(v)
 	if variables != nil {
 		return "mutation(" + queryArguments(variables) + ")" + query
 	}
@@ -82,11 +82,19 @@ func writeArgumentType(w io.Writer, t reflect.Type, value bool) {
 	}
 }
 
-// query uses writeQuery to recursively construct
-// a minified query string from the provided struct v.
+// GenerateQueryFields construct a minified graphql string type definition query string
+// from the provided struct v.
 //
 // E.g., struct{Foo Int, BarBaz *Boolean} -> "{foo,barBaz}".
-func query(v interface{}) string {
+//
+// You can concatenate snippets to produce custom queries, while still successfully
+// avoiding most of the repetition of describing your Go type in graphql terms.
+// To make a full query, you also need to prefix a variables section; the QueryCustom
+// method will do this for you.
+// Arguments, Aliases, and Fragments can also all be prepended to a Fields snippet;
+// see http://graphql.org/learn/queries/
+// for more description of each of these concepts.
+func GenerateQueryFields(v interface{}) string {
 	var buf bytes.Buffer
 	writeQuery(&buf, reflect.TypeOf(v), false)
 	return buf.String()
