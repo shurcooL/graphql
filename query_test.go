@@ -334,7 +334,33 @@ func TestConstructRecursiveQuery(t *testing.T) {
 				t.Errorf("\ngot:  %q\nwant: an error!\n", got)
 			}
 		})
-		expect := fmt.Errorf("cycle found")
+		expect := fmt.Errorf("cycle found: graphql.Recurser.Children->Recurser")
+		if err.Error() != expect.Error() {
+			t.Errorf("\ngot err:  %q\nwant err: %q\n", err, expect)
+		}
+	})
+	t.Run("deeper recursions should panic with helpful path info", func(t *testing.T) {
+		// A nested anonymous struct is used because function-local types require
+		// defining *in order*, so we can't make multi-step recursions out of them.
+		type Recurser struct {
+			LeafB    string
+			Children []struct {
+				Cycle Recurser
+			}
+			LeafC string
+		}
+		type Parent struct {
+			LeafA    string
+			Children []Recurser
+			LeafD    string
+		}
+		err := gatherPanic(func() {
+			got := query(Parent{})
+			if got != "" {
+				t.Errorf("\ngot:  %q\nwant: an error!\n", got)
+			}
+		})
+		expect := fmt.Errorf("cycle found: graphql.Parent.Children->graphql.Recurser.Children->struct { Cycle graphql.Recurser }.Cycle->Recurser")
 		if err.Error() != expect.Error() {
 			t.Errorf("\ngot err:  %q\nwant err: %q\n", err, expect)
 		}
