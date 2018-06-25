@@ -80,7 +80,7 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	if err != nil {
 		respBodyCopy, errRead := ioutil.ReadAll(resp.Body)
 		if errRead != nil {
-			fmt.Errorf("error decoding output: <an additional error ocurred while reading output: %s>", errRead)
+			return fmt.Errorf("error decoding output: <an additional error ocurred while reading output: %s>", errRead)
 		}
 		return fmt.Errorf("error decoding output: %v (output was: %s)", err, respBodyCopy)
 	}
@@ -96,7 +96,7 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	if resp.StatusCode != http.StatusOK {
 		respBodyCopy, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Errorf("unexpected status: %v <an additional error ocurred while reading output: %s>", resp.Status, err)
+			return fmt.Errorf("unexpected status: %v <an additional error ocurred while reading output: %s>", resp.Status, err)
 		}
 		return fmt.Errorf("unexpected status: %v %s", resp.Status, respBodyCopy)
 	}
