@@ -48,9 +48,9 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	var query string
 	switch op {
 	case queryOperation:
-		query = constructQuery(v, variables)
+		query = ConstructQuery(v, variables)
 	case mutationOperation:
-		query = constructMutation(v, variables)
+		query = ConstructMutation(v, variables)
 	}
 	in := struct {
 		Query     string                 `json:"query"`
