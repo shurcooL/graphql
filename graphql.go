@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/shurcooL/go/ctxhttp"
@@ -69,9 +70,7 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status: %v", resp.Status)
-	}
+
 	var out struct {
 		Data   *json.RawMessage
 		Errors errors
@@ -79,16 +78,27 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	}
 	err = json.NewDecoder(resp.Body).Decode(&out)
 	if err != nil {
-		return err
+		respBodyCopy, errRead := ioutil.ReadAll(resp.Body)
+		if errRead != nil {
+			return fmt.Errorf("error decoding output: <an additional error ocurred while reading output: %s>", errRead)
+		}
+		return fmt.Errorf("error decoding output: %v (output was: %s)", err, respBodyCopy)
 	}
 	if out.Data != nil {
 		err := jsonutil.UnmarshalGraphQL(*out.Data, v)
 		if err != nil {
-			return err
+			return fmt.Errorf("error unmarshalling data: %s", err)
 		}
 	}
 	if len(out.Errors) > 0 {
 		return out.Errors
+	}
+	if resp.StatusCode != http.StatusOK {
+		respBodyCopy, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("unexpected status: %v <an additional error ocurred while reading output: %s>", resp.Status, err)
+		}
+		return fmt.Errorf("unexpected status: %v %s", resp.Status, respBodyCopy)
 	}
 	return nil
 }
