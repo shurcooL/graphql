@@ -10,7 +10,7 @@ import (
 	"github.com/shurcooL/graphql/ident"
 )
 
-func constructQuery(v interface{}, variables map[string]interface{}) string {
+func ConstructQuery(v interface{}, variables map[string]interface{}) string {
 	query := query(v)
 	if len(variables) > 0 {
 		return "query(" + queryArguments(variables) + ")" + query
@@ -18,7 +18,7 @@ func constructQuery(v interface{}, variables map[string]interface{}) string {
 	return query
 }
 
-func constructMutation(v interface{}, variables map[string]interface{}) string {
+func ConstructMutation(v interface{}, variables map[string]interface{}) string {
 	query := query(v)
 	if len(variables) > 0 {
 		return "mutation(" + queryArguments(variables) + ")" + query
