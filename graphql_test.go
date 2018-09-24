@@ -101,6 +101,30 @@ func TestClient_Query_noDataWithErrorResponse(t *testing.T) {
 	}
 }
 
+func TestClient_Query_errorStatusCode(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, req *http.Request) {
+		http.Error(w, "important message", http.StatusInternalServerError)
+	})
+	client := graphql.NewClient("/graphql", &http.Client{Transport: localRoundTripper{handler: mux}})
+
+	var q struct {
+		User struct {
+			Name graphql.String
+		}
+	}
+	err := client.Query(context.Background(), &q, nil)
+	if err == nil {
+		t.Fatal("got error: nil, want: non-nil")
+	}
+	if got, want := err.Error(), `non-200 OK status code: 500 Internal Server Error body: "important message\n"`; got != want {
+		t.Errorf("got error: %v, want: %v", got, want)
+	}
+	if q.User.Name != "" {
+		t.Errorf("got non-empty q.User.Name: %v", q.User.Name)
+	}
+}
+
 // Test that an empty (but non-nil) variables map is
 // handled no differently than a nil variables map.
 func TestClient_Query_emptyVariables(t *testing.T) {
