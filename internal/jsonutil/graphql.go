@@ -304,5 +304,8 @@ func unmarshalValue(value json.Token, v reflect.Value) error {
 	if !v.CanAddr() {
 		return fmt.Errorf("value %v is not addressable", v)
 	}
+	if !v.CanInterface() {
+		return errors.New("struct contains an unexported field")
+	}
 	return json.Unmarshal(b, v.Addr().Interface())
 }

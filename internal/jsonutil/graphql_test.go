@@ -380,3 +380,16 @@ func TestUnmarshalGraphQL_arrayInsideInlineFragment(t *testing.T) {
 		t.Error("not equal")
 	}
 }
+
+func TestUnmarshalGraphQL_unexportedField(t *testing.T) {
+	type query struct {
+		foo graphql.String
+	}
+	err := jsonutil.UnmarshalGraphQL([]byte(`{"foo": "bar"}{"foo": "baz"}`), new(query))
+	if err == nil {
+		t.Fatal("got error: nil, want: non-nil")
+	}
+	if got, want := err.Error(), "struct contains an unexported field"; got != want {
+		t.Errorf("got error: %v, want: %v", got, want)
+	}
+}
