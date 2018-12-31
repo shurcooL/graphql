@@ -241,6 +241,19 @@ func TestUnmarshalGraphQL_pointerWithInlineFragment(t *testing.T) {
 	}
 }
 
+func TestUnmarshalGraphQL_unexportedField(t *testing.T) {
+	type query struct {
+		foo graphql.String
+	}
+	err := jsonutil.UnmarshalGraphQL([]byte(`{"foo": "bar"}`), new(query))
+	if err == nil {
+		t.Fatal("got error: nil, want: non-nil")
+	}
+	if got, want := err.Error(), "struct field for \"foo\" doesn't exist in any of 1 places to unmarshal"; got != want {
+		t.Errorf("got error: %v, want: %v", got, want)
+	}
+}
+
 func TestUnmarshalGraphQL_multipleValues(t *testing.T) {
 	type query struct {
 		Foo graphql.String
