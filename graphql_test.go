@@ -2,6 +2,7 @@ package graphql_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -49,7 +50,7 @@ func TestClient_Query_partialDataWithErrorResponse(t *testing.T) {
 			ID graphql.ID
 		} `graphql:"node2: node(id: \"NotExist\")"`
 	}
-	err := client.Query(context.Background(), &q, nil)
+	err := client.Query(context.Background(), &q, nil, nil)
 	if err == nil {
 		t.Fatal("got error: nil, want: non-nil")
 	}
@@ -89,7 +90,7 @@ func TestClient_Query_noDataWithErrorResponse(t *testing.T) {
 			Name graphql.String
 		}
 	}
-	err := client.Query(context.Background(), &q, nil)
+	err := client.Query(context.Background(), &q, nil, nil)
 	if err == nil {
 		t.Fatal("got error: nil, want: non-nil")
 	}
@@ -113,7 +114,7 @@ func TestClient_Query_errorStatusCode(t *testing.T) {
 			Name graphql.String
 		}
 	}
-	err := client.Query(context.Background(), &q, nil)
+	err := client.Query(context.Background(), &q, nil, nil)
 	if err == nil {
 		t.Fatal("got error: nil, want: non-nil")
 	}
@@ -144,11 +145,82 @@ func TestClient_Query_emptyVariables(t *testing.T) {
 			Name string
 		}
 	}
-	err := client.Query(context.Background(), &q, map[string]interface{}{})
+	err := client.Query(context.Background(), &q, map[string]interface{}{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got, want := q.User.Name, "Gopher"; got != want {
+		t.Errorf("got q.User.Name: %q, want: %q", got, want)
+	}
+}
+
+// Test that nil setHeaders has no impact
+func TestClient_Query_setHeadersNil(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, req *http.Request) {
+		body := mustRead(req.Body)
+		if got, want := body, `{"query":"{user{name}}"}`+"\n"; got != want {
+			t.Errorf("got body: %v, want %v", got, want)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		name := req.Header.Get("TestUser")
+		if name == "" {
+			name = "Gopher"
+		}
+		outBody := fmt.Sprintf("{\"data\": {\"user\": {\"name\": \"%s\"}}}\n", name)
+		mustWrite(w, outBody)
+	})
+
+	client := graphql.NewClient("/graphql", &http.Client{Transport: localRoundTripper{handler: mux}})
+
+	var q struct {
+		User struct {
+			Name string
+		}
+	}
+
+	err := client.Query(context.Background(), &q, map[string]interface{}{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := q.User.Name, "Gopher"; got != want {
+		t.Errorf("got q.User.Name: %q, want: %q", got, want)
+	}
+}
+
+// Test that setHeaders does send headers
+func TestClient_Query_setHeaders(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, req *http.Request) {
+		body := mustRead(req.Body)
+		if got, want := body, `{"query":"{user{name}}"}`+"\n"; got != want {
+			t.Errorf("got body: %v, want %v", got, want)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		name := req.Header.Get("TestUser")
+		if name == "" {
+			name = "Gopher"
+		}
+		outBody := fmt.Sprintf("{\"data\": {\"user\": {\"name\": \"%s\"}}}\n", name)
+		mustWrite(w, outBody)
+	})
+
+	client := graphql.NewClient("/graphql", &http.Client{Transport: localRoundTripper{handler: mux}})
+
+	var q struct {
+		User struct {
+			Name string
+		}
+	}
+	setHeaders := func(req *http.Request) {
+		req.Header.Set("TestUser", "testUser")
+	}
+
+	err := client.Query(context.Background(), &q, map[string]interface{}{}, setHeaders)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := q.User.Name, "testUser"; got != want {
 		t.Errorf("got q.User.Name: %q, want: %q", got, want)
 	}
 }
