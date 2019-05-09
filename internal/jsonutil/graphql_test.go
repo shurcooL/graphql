@@ -1,6 +1,7 @@
 package jsonutil_test
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
@@ -77,6 +78,29 @@ func TestUnmarshalGraphQL_jsonTag(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Error("not equal")
+	}
+}
+
+func TestUnmarshalGraphQL_jsonRawTag(t *testing.T) {
+	type query struct {
+		Data    json.RawMessage
+		Another string
+	}
+	var got query
+	err := jsonutil.UnmarshalGraphQL([]byte(`{
+		"Data": { "foo":"bar" },
+		"Another" : "stuff"
+        }`), &got)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := query{
+		Another: "stuff",
+		Data:    []byte(`{"foo":"bar"}`),
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("not equal: %v %v", want, got)
 	}
 }
 

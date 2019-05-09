@@ -42,6 +42,7 @@ func UnmarshalGraphQL(data []byte, v interface{}) error {
 type decoder struct {
 	tokenizer interface {
 		Token() (json.Token, error)
+		Decode(v interface{}) error
 	}
 
 	// Stack of what part of input JSON we're in the middle of - objects, arrays.
@@ -68,10 +69,14 @@ func (d *decoder) Decode(v interface{}) error {
 
 // decode decodes a single JSON value from d.tokenizer into d.vs.
 func (d *decoder) decode() error {
+	rawMessageValue := reflect.ValueOf(json.RawMessage{})
+
 	// The loop invariant is that the top of each d.vs stack
 	// is where we try to unmarshal the next JSON value we see.
 	for len(d.vs) > 0 {
+		var tok interface{}
 		tok, err := d.tokenizer.Token()
+
 		if err == io.EOF {
 			return errors.New("unexpected end of JSON input")
 		} else if err != nil {
@@ -87,6 +92,8 @@ func (d *decoder) decode() error {
 				return errors.New("unexpected non-key in JSON input")
 			}
 			someFieldExist := false
+			// If one field is raw all must be treated as raw
+			rawMessage := false
 			for i := range d.vs {
 				v := d.vs[i][len(d.vs[i])-1]
 				if v.Kind() == reflect.Ptr {
@@ -97,7 +104,12 @@ func (d *decoder) decode() error {
 					f = fieldByGraphQLName(v, key)
 					if f.IsValid() {
 						someFieldExist = true
+						// Check for special embedded json
+						if f.Type() == rawMessageValue.Type() {
+							rawMessage = true
+						}
 					}
+
 				}
 				d.vs[i] = append(d.vs[i], f)
 			}
@@ -105,16 +117,23 @@ func (d *decoder) decode() error {
 				return fmt.Errorf("struct field for %q doesn't exist in any of %v places to unmarshal", key, len(d.vs))
 			}
 
-			// We've just consumed the current token, which was the key.
-			// Read the next token, which should be the value, and let the rest of code process it.
-			tok, err = d.tokenizer.Token()
-			if err == io.EOF {
-				return errors.New("unexpected end of JSON input")
-			} else if err != nil {
-				return err
+			if rawMessage {
+				// Read the next complete object from the json stream
+				var data json.RawMessage
+				d.tokenizer.Decode(&data)
+				tok = data
+			} else {
+				// We've just consumed the current token, which was the key.
+				// Read the next token, which should be the value, and let the rest of code process it.
+				tok, err = d.tokenizer.Token()
+				if err == io.EOF {
+					return errors.New("unexpected end of JSON input")
+				} else if err != nil {
+					return err
+				}
 			}
 
-		// Are we inside an array and seeing next value (rather than end of array)?
+			// Are we inside an array and seeing next value (rather than end of array)?
 		case d.state() == '[' && tok != json.Delim(']'):
 			someSliceExist := false
 			for i := range d.vs {
@@ -136,7 +155,7 @@ func (d *decoder) decode() error {
 		}
 
 		switch tok := tok.(type) {
-		case string, json.Number, bool, nil:
+		case string, json.Number, bool, nil, json.RawMessage:
 			// Value.
 
 			for i := range d.vs {
@@ -302,7 +321,7 @@ func isGraphQLFragment(f reflect.StructField) bool {
 // unmarshalValue unmarshals JSON value into v.
 // v must be addressable and not obtained by the use of unexported
 // struct fields, otherwise unmarshalValue will panic.
-func unmarshalValue(value json.Token, v reflect.Value) error {
+func unmarshalValue(value interface{}, v reflect.Value) error {
 	b, err := json.Marshal(value) // TODO: Short-circuit (if profiling says it's worth it).
 	if err != nil {
 		return err
