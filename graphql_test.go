@@ -153,6 +153,30 @@ func TestClient_Query_emptyVariables(t *testing.T) {
 	}
 }
 
+func TestClient_Query_requestOptions(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, req *http.Request) {
+		header := req.Header.Get("Custom-Request-Header")
+		if got, want := header, "test-custom-header"; got != want {
+			t.Errorf("got header: %v, want %v", got, want)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		mustWrite(w, `{"data": {"user": {"name": "Gopher"}}}`)
+	})
+	client := graphql.NewClient("/graphql", &http.Client{Transport: localRoundTripper{handler: mux}})
+
+	var q struct {
+		User struct {
+			Name string
+		}
+	}
+	err := client.Query(context.Background(), &q, map[string]interface{}{}, graphql.WithRequestHeader("Custom-Request-Header", "test-custom-header"))
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // localRoundTripper is an http.RoundTripper that executes HTTP transactions
 // by using handler directly, instead of going over an HTTP connection.
 type localRoundTripper struct {
