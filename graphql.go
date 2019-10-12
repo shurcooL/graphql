@@ -32,12 +32,13 @@ func NewClient(url string, httpClient *http.Client) *Client {
 
 // RequestOption is a variadic option for modifying an underlying HTTP request
 // for GraphQL.
-type RequestOption func(req *http.Request)
+type RequestOption func(req *http.Request) error
 
 // WithRequestHeader sets an explicit HTTP header for usage
 func WithRequestHeader(key, value string) RequestOption {
-	return func(req *http.Request) {
+	return func(req *http.Request) error {
 		req.Header.Set(key, value)
+		return nil
 	}
 }
 
@@ -83,7 +84,10 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	req.Header.Set("Content-Type", "application/json")
 
 	for _, opt := range opts {
-		opt(req)
+		err := opt(req)
+		if err != nil {
+			return err
+		}
 	}
 
 	resp, err := ctxhttp.Do(ctx, c.httpClient, req)
