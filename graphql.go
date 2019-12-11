@@ -9,25 +9,58 @@ import (
 	"net/http"
 
 	"github.com/shurcooL/graphql/internal/jsonutil"
-	"golang.org/x/net/context/ctxhttp"
 )
+
+var (
+	defaultClientHeaders = map[string]string{
+		"Content-Type": "application/json",
+	}
+)
+
+// ClientOptFunc graphql client option
+type ClientOptFunc func(*Client)
+
+// WithHeader set graphql client header
+func WithHeader(key, val string) ClientOptFunc {
+	return func(c *Client) {
+		c.headers[key] = val
+	}
+}
+
+// WithCookie set graphql client cookie
+func WithCookie(key, val string) ClientOptFunc {
+	return func(c *Client) {
+		if c.cookies == nil {
+			c.cookies = map[string]string{}
+		}
+		c.cookies[key] = val
+	}
+}
 
 // Client is a GraphQL client.
 type Client struct {
 	url        string // GraphQL server URL.
 	httpClient *http.Client
+
+	headers,
+	cookies map[string]string
 }
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
 // If httpClient is nil, then http.DefaultClient is used.
-func NewClient(url string, httpClient *http.Client) *Client {
+func NewClient(url string, httpClient *http.Client, opts ...ClientOptFunc) (c *Client) {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	return &Client{
+	c = &Client{
+		headers:    defaultClientHeaders,
 		url:        url,
 		httpClient: httpClient,
 	}
+	for _, optf := range opts {
+		optf(c)
+	}
+	return c
 }
 
 // Query executes a single GraphQL query request,
@@ -65,8 +98,21 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	if err != nil {
 		return err
 	}
-	resp, err := ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
-	if err != nil {
+	var (
+		req  *http.Request
+		resp *http.Response
+	)
+	// fmt.Println(buf.String())
+	if req, err = http.NewRequest("POST", c.url, &buf); err != nil {
+		return err
+	}
+	for k, v := range c.headers {
+		req.Header.Set(k, v)
+	}
+	for k, v := range c.cookies {
+		req.AddCookie(&http.Cookie{Name: k, Value: v})
+	}
+	if resp, err = c.httpClient.Do(req.WithContext(ctx)); err != nil {
 		return err
 	}
 	defer resp.Body.Close()
