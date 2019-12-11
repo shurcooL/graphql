@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/shurcooL/graphql/internal/jsonutil"
 	"golang.org/x/net/context/ctxhttp"
@@ -14,8 +15,9 @@ import (
 
 // Client is a GraphQL client.
 type Client struct {
-	url        string // GraphQL server URL.
-	httpClient *http.Client
+	url         string // GraphQL server URL.
+	httpClient  *http.Client
+	queryString queryType
 }
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
@@ -25,9 +27,22 @@ func NewClient(url string, httpClient *http.Client) *Client {
 		httpClient = http.DefaultClient
 	}
 	return &Client{
-		url:        url,
-		httpClient: httpClient,
+		url:         url,
+		httpClient:  httpClient,
+		queryString: disabled,
 	}
+}
+
+// EnableQueryString enables query string mode for graphql queries
+func (c *Client) EnableQueryString() *Client {
+	c.queryString = enabled
+	return c
+}
+
+// DisableQueryString disables query string mode for graphql queries
+func (c *Client) DisableQueryString() *Client {
+	c.queryString = disabled
+	return c
 }
 
 // Query executes a single GraphQL query request,
@@ -65,7 +80,14 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	if err != nil {
 		return err
 	}
-	resp, err := ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
+
+	var resp *http.Response
+	if op == queryOperation && c.queryString == enabled {
+		resp, err = GetWithQueryString(ctx, c.httpClient, c.url, query, variables)
+	} else {
+		resp, err = ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -120,4 +142,23 @@ const (
 	queryOperation operationType = iota
 	mutationOperation
 	//subscriptionOperation // Unused.
+)
+
+// GetWithQueryString sends an http get request with the query and variables as a query string
+func GetWithQueryString(ctx context.Context, client *http.Client, graphqlURL string, query string, variables map[string]interface{}) (*http.Response, error) {
+	queryString := url.QueryEscape(query)
+	variableBytes, err := json.Marshal(variables)
+	if err != nil {
+		return &http.Response{}, err
+	}
+	variableString := url.QueryEscape(string(variableBytes))
+	resp, err := ctxhttp.Get(ctx, client, graphqlURL+`?query=`+queryString+`&variables=`+variableString)
+	return resp, err
+}
+
+type queryType uint8
+
+const (
+	disabled queryType = iota
+	enabled
 )
