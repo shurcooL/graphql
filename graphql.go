@@ -11,11 +11,11 @@ import (
 	"github.com/shurcooL/graphql/internal/jsonutil"
 )
 
-var (
-	defaultClientHeaders = map[string]string{
+func getDefaultClientHeaders() map[string]string {
+	return map[string]string{
 		"Content-Type": "application/json",
 	}
-)
+}
 
 // ClientOptFunc graphql client option
 type ClientOptFunc func(*Client)
@@ -48,18 +48,26 @@ type Client struct {
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
 // If httpClient is nil, then http.DefaultClient is used.
-func NewClient(url string, httpClient *http.Client, opts ...ClientOptFunc) (c *Client) {
+func NewClient(url string, httpClient *http.Client) (c *Client) {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 	c = &Client{
-		headers:    defaultClientHeaders,
+		headers:    getDefaultClientHeaders(),
 		url:        url,
 		httpClient: httpClient,
 	}
+
+	return c
+}
+
+// NewClientWithOptions creates a GraphQL client, same as NewClient but with some options can used to set HTTP Header
+func NewClientWithOptions(url string, httpClient *http.Client, opts ...ClientOptFunc) (c *Client) {
+	c = NewClient(url, httpClient)
 	for _, optf := range opts {
 		optf(c)
 	}
+
 	return c
 }
 
