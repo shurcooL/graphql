@@ -1,5 +1,4 @@
-graphql
-=======
+# graphql
 
 [![Build Status](https://travis-ci.org/shurcooL/graphql.svg?branch=master)](https://travis-ci.org/shurcooL/graphql) [![GoDoc](https://godoc.org/github.com/shurcooL/graphql?status.svg)](https://godoc.org/github.com/shurcooL/graphql)
 
@@ -9,17 +8,15 @@ For more information, see package [`github.com/shurcooL/githubv4`](https://githu
 
 **Status:** In active early research and development. The API will change when opportunities for improvement are discovered; it is not yet frozen.
 
-Installation
-------------
+## Installation
 
 `graphql` requires Go version 1.8 or later.
 
 ```bash
-go get -u github.com/shurcooL/graphql
+go get -u github.com/unitedwardrobe/graphql
 ```
 
-Usage
------
+## Usage
 
 Construct a GraphQL client, specifying the GraphQL server URL. Then, you can use it to make GraphQL queries and mutations.
 
@@ -278,16 +275,14 @@ fmt.Printf("Created a %v star review: %v\n", m.CreateReview.Stars, m.CreateRevie
 // Created a 5 star review: This is a great movie!
 ```
 
-Directories
------------
+## Directories
 
 | Path                                                                                   | Synopsis                                                                                                        |
-|----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | [example/graphqldev](https://godoc.org/github.com/shurcooL/graphql/example/graphqldev) | graphqldev is a test program currently being used for developing graphql package.                               |
 | [ident](https://godoc.org/github.com/shurcooL/graphql/ident)                           | Package ident provides functions for parsing and converting identifier names between various naming convention. |
 | [internal/jsonutil](https://godoc.org/github.com/shurcooL/graphql/internal/jsonutil)   | Package jsonutil provides a function for decoding JSON into a GraphQL query data structure.                     |
 
-License
--------
+## License
 
--	[MIT License](LICENSE)
+- [MIT License](LICENSE)
