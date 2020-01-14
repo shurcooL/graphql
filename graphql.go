@@ -76,32 +76,38 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	}
 	var out struct {
 		Data   *json.RawMessage
-		Errors errors
-		//Extensions interface{} // Unused.
+		Errors Errors
 	}
 	err = json.NewDecoder(resp.Body).Decode(&out)
 	if err != nil {
-		// TODO: Consider including response body in returned error, if deemed helpful.
 		return err
 	}
+
+	var graphQLErrors Errors
+
+	if len(out.Errors) > 0 {
+		graphQLErrors = out.Errors
+	}
+
 	if out.Data != nil {
 		err := jsonutil.UnmarshalGraphQL(*out.Data, v)
+
 		if err != nil {
-			// TODO: Consider including response body in returned error, if deemed helpful.
 			return err
 		}
 	}
-	if len(out.Errors) > 0 {
-		return out.Errors
-	}
-	return nil
+
+	return graphQLErrors
 }
 
-// errors represents the "errors" array in a response from a GraphQL server.
+// Errors represents the "errors" array in a response from a GraphQL server.
 // If returned via error interface, the slice is expected to contain at least 1 element.
 //
 // Specification: https://facebook.github.io/graphql/#sec-Errors.
-type errors []struct {
+type Errors []Error
+
+// Errors represents an error from the "errors" array in a response from a GraphQL server.
+type Error struct {
 	Message   string
 	Locations []struct {
 		Line   int
@@ -110,8 +116,13 @@ type errors []struct {
 }
 
 // Error implements error interface.
-func (e errors) Error() string {
-	return e[0].Message
+func (e Errors) Error() string {
+	return e[0].Error()
+}
+
+// Error implements error interface.
+func (e Error) Error() string {
+	return e.Error()
 }
 
 type operationType uint8
