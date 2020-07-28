@@ -227,6 +227,20 @@ func TestConstructQuery(t *testing.T) {
 			}{},
 			want: `{viewer{login,createdAt,id,databaseId}}`,
 		},
+		{
+			inV: NewNamedOperation("FindPerson", struct {
+				Login string
+			}{}),
+			inVariables: nil,
+			want:        `query FindPerson{login}`,
+		},
+		{
+			inV: NewNamedOperation("FindPerson", struct {
+				Login string
+			}{}),
+			inVariables: map[string]interface{}{"id": Int(1)},
+			want:        `query FindPerson($id:Int!){login}`,
+		},
 	}
 	for _, tc := range tests {
 		got := constructQuery(tc.inV, tc.inVariables)
@@ -261,6 +275,24 @@ func TestConstructMutation(t *testing.T) {
 				},
 			},
 			want: `mutation($input:AddReactionInput!){addReaction(input:$input){subject{reactionGroups{users{totalCount}}}}}`,
+		},
+		{
+			inV: NewNamedOperation("ThumbsUp", struct {
+				AddReaction struct {
+					Name string
+				} `graphql:"addReaction(input:$input)"`
+			}{}),
+			inVariables: nil,
+			want:        `mutation ThumbsUp{addReaction(input:$input){name}}`,
+		},
+		{
+			inV: NewNamedOperation("ThumbsUp", struct {
+				AddReaction struct {
+					Name string
+				} `graphql:"addReaction(input:$input)"`
+			}{}),
+			inVariables: map[string]interface{}{"id": Int(1)},
+			want:        `mutation ThumbsUp($id:Int!){addReaction(input:$input){name}}`,
 		},
 	}
 	for _, tc := range tests {
