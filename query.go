@@ -7,23 +7,41 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/shurcooL/graphql/ident"
+	"github.com/hasura/go-graphql-client/ident"
 )
 
-func constructQuery(v interface{}, variables map[string]interface{}) string {
+func constructQuery(v interface{}, variables map[string]interface{}, name string) string {
 	query := query(v)
 	if len(variables) > 0 {
-		return "query(" + queryArguments(variables) + ")" + query
+		return "query " + name + "(" + queryArguments(variables) + ")" + query
+	}
+
+	if name != "" {
+		return "query " + name + query
 	}
 	return query
 }
 
-func constructMutation(v interface{}, variables map[string]interface{}) string {
+func constructMutation(v interface{}, variables map[string]interface{}, name string) string {
 	query := query(v)
 	if len(variables) > 0 {
-		return "mutation(" + queryArguments(variables) + ")" + query
+		return "mutation " + name + "(" + queryArguments(variables) + ")" + query
+	}
+	if name != "" {
+		return "mutation " + name + query
 	}
 	return "mutation" + query
+}
+
+func constructSubscription(v interface{}, variables map[string]interface{}, name string) string {
+	query := query(v)
+	if len(variables) > 0 {
+		return "subscription " + name + "(" + queryArguments(variables) + ")" + query
+	}
+	if name != "" {
+		return "subscription " + name + query
+	}
+	return "subscription" + query
 }
 
 // queryArguments constructs a minified arguments string for variables.

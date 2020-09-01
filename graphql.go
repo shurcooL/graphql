@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/shurcooL/graphql/internal/jsonutil"
+	"github.com/hasura/go-graphql-client/internal/jsonutil"
 	"golang.org/x/net/context/ctxhttp"
 )
 
@@ -34,24 +34,34 @@ func NewClient(url string, httpClient *http.Client) *Client {
 // with a query derived from q, populating the response into it.
 // q should be a pointer to struct that corresponds to the GraphQL schema.
 func (c *Client) Query(ctx context.Context, q interface{}, variables map[string]interface{}) error {
-	return c.do(ctx, queryOperation, q, variables)
+	return c.do(ctx, queryOperation, q, variables, "")
+}
+
+// NamedQuery executes a single GraphQL query request, with operation name
+func (c *Client) NamedQuery(ctx context.Context, name string, q interface{}, variables map[string]interface{}) error {
+	return c.do(ctx, queryOperation, q, variables, name)
 }
 
 // Mutate executes a single GraphQL mutation request,
 // with a mutation derived from m, populating the response into it.
 // m should be a pointer to struct that corresponds to the GraphQL schema.
 func (c *Client) Mutate(ctx context.Context, m interface{}, variables map[string]interface{}) error {
-	return c.do(ctx, mutationOperation, m, variables)
+	return c.do(ctx, mutationOperation, m, variables, "")
+}
+
+// NamedMutate executes a single GraphQL mutation request, , with operation name
+func (c *Client) NamedMutate(ctx context.Context, name string, m interface{}, variables map[string]interface{}) error {
+	return c.do(ctx, mutationOperation, m, variables, name)
 }
 
 // do executes a single GraphQL operation.
-func (c *Client) do(ctx context.Context, op operationType, v interface{}, variables map[string]interface{}) error {
+func (c *Client) do(ctx context.Context, op operationType, v interface{}, variables map[string]interface{}, name string) error {
 	var query string
 	switch op {
 	case queryOperation:
-		query = constructQuery(v, variables)
+		query = constructQuery(v, variables, name)
 	case mutationOperation:
-		query = constructMutation(v, variables)
+		query = constructMutation(v, variables, name)
 	}
 	in := struct {
 		Query     string                 `json:"query"`

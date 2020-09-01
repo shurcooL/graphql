@@ -1,7 +1,9 @@
-graphql
+go-graphql-client
 =======
 
-[![Build Status](https://travis-ci.org/shurcooL/graphql.svg?branch=master)](https://travis-ci.org/shurcooL/graphql) [![GoDoc](https://godoc.org/github.com/shurcooL/graphql?status.svg)](https://godoc.org/github.com/shurcooL/graphql)
+[![Build Status](https://travis-ci.org/hasura/go-graphql-client.svg?branch=master)](https://travis-ci.org/hasura/go-graphql-client.svg?branch=master) [![GoDoc](https://godoc.org/github.com/hasura/go-graphql-client?status.svg)](https://pkg.go.dev/github.com/hasura/go-graphql-client)
+
+**Preface:** This is a fork of `https://github.com/shurcooL/graphql` with extended features (subscription client, named operation)
 
 Package `graphql` provides a GraphQL client implementation.
 
@@ -12,10 +14,10 @@ For more information, see package [`github.com/shurcooL/githubv4`](https://githu
 Installation
 ------------
 
-`graphql` requires Go version 1.8 or later.
+`go-graphql-client` requires Go version 1.13 or later.
 
 ```bash
-go get -u github.com/shurcooL/graphql
+go get -u github.com/hasura/go-graphql-client
 ```
 
 Usage
@@ -276,6 +278,130 @@ fmt.Printf("Created a %v star review: %v\n", m.CreateReview.Stars, m.CreateRevie
 
 // Output:
 // Created a 5 star review: This is a great movie!
+```
+
+### Subcriptions
+
+Usage
+-----
+
+Construct a Subscription client, specifying the GraphQL server URL.
+
+```Go
+client := graphql.NewSubscriptionClient("wss://example.com/graphql")
+defer client.Close()
+
+// Subscribe subscriptions
+// ...
+// finally run the client
+client.Run()
+```
+
+#### Subscribe
+
+To make a GraphQL subscription, you need to define a corresponding Go type.
+
+For example, to make the following GraphQL query:
+
+```GraphQL
+subscription {
+	me {
+		name
+	}
+}
+```
+
+You can define this variable:
+
+```Go
+var subscription struct {
+	Me struct {
+		Name graphql.String
+	}
+}
+```
+
+Then call `client.Subscribe`, passing a pointer to it:
+
+```Go
+subscriptionId, err := client.Subscribe(&query, nil, func(dataValue *json.RawMessage, errValue error) error {
+	if errValue != nil {
+		// handle error
+		// if returns error, it will failback to `onError` event
+		return nil
+	}
+	data := query{}
+	err := json.Unmarshal(dataValue, &data)
+
+	fmt.Println(query.Me.Name)
+
+	// Output: Luke Skywalker
+})
+
+if err != nil {
+	// Handle error.
+}
+
+// you can unsubscribe the subscription while the client is running
+client.Unsubscribe(subscriptionId)
+```
+
+#### Authentication
+
+The subscription client is authenticated with GraphQL server through connection params:
+
+```Go
+client := graphql.NewSubscriptionClient("wss://example.com/graphql").
+	WithConnectionParams(map[string]interface{}{
+		"headers": map[string]string{
+				"authentication": "...",
+		},
+	})
+
+```
+
+#### Options
+
+```Go
+client.
+	//  write timeout of websocket client
+	WithTimeout(time.Minute). 
+	// When the websocket server was stopped, the client will retry connecting every second until timeout
+	WithRetryTimeout(time.Minute).
+	// sets loging function to print out received messages. By default, nothing is printed
+	WithLog(log.Println).
+	// max size of response message
+	WithReadLimit(10*1024*1024).
+	// these operation event logs won't be printed
+	WithoutLogTypes(graphql.GQL_DATA, graphql.GQL_CONNECTION_KEEP_ALIVE)
+
+```
+
+#### Events
+
+```Go
+// OnConnected event is triggered when the websocket connected to GraphQL server sucessfully
+client.OnConnected(fn func())
+
+// OnDisconnected event is triggered when the websocket server was stil down after retry timeout
+client.OnDisconnected(fn func())
+
+// OnConnected event is triggered when there is any connection error. This is bottom exception handler level
+// If this function is empty, or returns nil, the error is ignored
+// If returns error, the websocket connection will be terminated
+client.OnError(onError func(sc *SubscriptionClient, err error) error)
+```
+
+### With operation name
+
+Operatiion name is still on API decision plan https://github.com/shurcooL/graphql/issues/12. However, in my opinion separate methods are easier choice to avoid breaking changes
+
+```Go
+func (c *Client) NamedQuery(ctx context.Context, name string, q interface{}, variables map[string]interface{})
+
+func (c *Client) NamedMutate(ctx context.Context, name string, q interface{}, variables map[string]interface{})
+
+func (sc *SubscriptionClient) NamedSubscribe(name string, v interface{}, variables map[string]interface{}, handler func(message *json.RawMessage, err error) error) (string, error)
 ```
 
 Directories
