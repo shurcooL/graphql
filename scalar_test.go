@@ -27,4 +27,10 @@ func TestNewScalars(t *testing.T) {
 	if got := graphql.NewString(""); got == nil {
 		t.Error("NewString returned nil")
 	}
+	if got := graphql.NewDate(graphql.Date{}); got == nil {
+		t.Error("NewDate returned nil")
+	}
+	if got := graphql.NewDateTime(graphql.DateTime{}); got == nil {
+		t.Error("NewDateTime returned nil")
+	}
 }
