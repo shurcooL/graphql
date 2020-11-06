@@ -1,5 +1,7 @@
 package graphql
 
+import "time"
+
 // Note: These custom types are meant to be used in queries for now.
 // But the plan is to switch to using native Go types (string, int, bool, time.Time, etc.).
 // See https://github.com/shurcooL/githubv4/issues/9 for details.
@@ -33,6 +35,12 @@ type (
 	// This type is most often used by GraphQL to represent free-form
 	// human-readable text.
 	String string
+
+	// Date is an ISO-8601 encoded date.
+	Date struct{ time.Time }
+
+	// DateTime is an ISO-8601 encoded UTC date.
+	DateTime struct{ time.Time }
 )
 
 // NewBoolean is a helper to make a new *Boolean.
@@ -49,3 +57,9 @@ func NewInt(v Int) *Int { return &v }
 
 // NewString is a helper to make a new *String.
 func NewString(v String) *String { return &v }
+
+// NewDate is a helper to make a new *Date.
+func NewDate(v Date) *Date { return &v }
+
+// NewDateTime is a helper to make a new *DateTime.
+func NewDateTime(v DateTime) *DateTime { return &v }
