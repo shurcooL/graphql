@@ -49,13 +49,20 @@ func TestClient_Query_partialDataWithErrorResponse(t *testing.T) {
 			ID graphql.ID
 		} `graphql:"node2: node(id: \"NotExist\")"`
 	}
-	err := client.Query(context.Background(), &q, nil)
+
+	_, err := client.QueryRaw(context.Background(), &q, nil)
+	if err == nil {
+		t.Fatal("got error: nil, want: non-nil")
+	}
+
+	err = client.Query(context.Background(), &q, nil)
 	if err == nil {
 		t.Fatal("got error: nil, want: non-nil")
 	}
 	if got, want := err.Error(), "Could not resolve to a node with the global id of 'NotExist'"; got != want {
 		t.Errorf("got error: %v, want: %v", got, want)
 	}
+
 	if q.Node1 == nil || q.Node1.ID != "MDEyOklzc3VlQ29tbWVudDE2OTQwNzk0Ng==" {
 		t.Errorf("got wrong q.Node1: %v", q.Node1)
 	}
@@ -98,6 +105,11 @@ func TestClient_Query_noDataWithErrorResponse(t *testing.T) {
 	}
 	if q.User.Name != "" {
 		t.Errorf("got non-empty q.User.Name: %v", q.User.Name)
+	}
+
+	_, err = client.QueryRaw(context.Background(), &q, nil)
+	if err == nil {
+		t.Fatal("got error: nil, want: non-nil")
 	}
 }
 

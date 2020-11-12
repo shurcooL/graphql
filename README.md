@@ -396,14 +396,28 @@ client.OnError(onError func(sc *SubscriptionClient, err error) error)
 
 ### With operation name
 
-Operatiion name is still on API decision plan https://github.com/shurcooL/graphql/issues/12. However, in my opinion separate methods are easier choice to avoid breaking changes
+Operation name is still on API decision plan https://github.com/shurcooL/graphql/issues/12. However, in my opinion separate methods are easier choice to avoid breaking changes
 
 ```Go
-func (c *Client) NamedQuery(ctx context.Context, name string, q interface{}, variables map[string]interface{})
+func (c *Client) NamedQuery(ctx context.Context, name string, q interface{}, variables map[string]interface{}) error
 
-func (c *Client) NamedMutate(ctx context.Context, name string, q interface{}, variables map[string]interface{})
+func (c *Client) NamedMutate(ctx context.Context, name string, q interface{}, variables map[string]interface{}) error
 
 func (sc *SubscriptionClient) NamedSubscribe(name string, v interface{}, variables map[string]interface{}, handler func(message *json.RawMessage, err error) error) (string, error)
+```
+
+### Raw bytes response
+
+In the case we developers want to decode JSON response ourself. Moreover, the default `UnmarshalGraphQL` function isn't ideal with complicated nested interfaces
+
+```Go
+func (c *Client) QueryRaw(ctx context.Context, q interface{}, variables map[string]interface{}) (*json.RawMessage, error)
+
+func (c *Client) MutateRaw(ctx context.Context, q interface{}, variables map[string]interface{}) (*json.RawMessage, error)
+
+func (c *Client) NamedQueryRaw(ctx context.Context, name string, q interface{}, variables map[string]interface{}) (*json.RawMessage, error)
+
+func (c *Client) NamedMutateRaw(ctx context.Context, name string, q interface{}, variables map[string]interface{}) (*json.RawMessage, error)
 ```
 
 Directories
