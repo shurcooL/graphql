@@ -48,7 +48,8 @@ type Client struct {
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
 // If httpClient is nil, then http.DefaultClient is used.
-func NewClient(url string, httpClient *http.Client) (c *Client) {
+func NewClient(url string, httpClient *http.Client) *Client {
+	var c *Client
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
