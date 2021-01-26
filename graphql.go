@@ -14,19 +14,30 @@ import (
 
 // Client is a GraphQL client.
 type Client struct {
-	url        string // GraphQL server URL.
-	httpClient *http.Client
+	url           string // GraphQL server URL.
+	httpClient    *http.Client
+	acceptHeaders []string
 }
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
 // If httpClient is nil, then http.DefaultClient is used.
 func NewClient(url string, httpClient *http.Client) *Client {
+	return NewClientWithAcceptHeaders(url, httpClient, nil)
+}
+
+// NewClientWithAcceptHeaders creates a GraphQL client targeting the specified
+// GraphQL server URL.
+// If httpClient is nil, then http.DefaultClient is used.
+// All of the accept headers passed to this new client will be set for each
+// request.
+func NewClientWithAcceptHeaders(url string, httpClient *http.Client, acceptHeaders []string) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 	return &Client{
-		url:        url,
-		httpClient: httpClient,
+		url:           url,
+		httpClient:    httpClient,
+		acceptHeaders: acceptHeaders,
 	}
 }
 
@@ -65,7 +76,15 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	if err != nil {
 		return err
 	}
-	resp, err := ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
+	req, err := http.NewRequest("POST", c.url, &buf)
+	if err != nil {
+		return err
+	}
+	for _, acceptHeader := range c.acceptHeaders {
+		req.Header.Set("Accept", acceptHeader)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := ctxhttp.Do(ctx, c.httpClient, req)
 	if err != nil {
 		return err
 	}
