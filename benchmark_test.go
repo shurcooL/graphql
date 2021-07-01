@@ -1,4 +1,4 @@
-package jsonutil_test
+package graphjson_test
 
 import (
 	"encoding/json"
@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Code-Hex/go-graphjson"
 	"github.com/shurcooL/graphql"
-	"github.com/shurcooL/graphql/internal/jsonutil"
 )
 
 func TestUnmarshalGraphQL_benchmark(t *testing.T) {
@@ -28,7 +28,7 @@ func TestUnmarshalGraphQL_benchmark(t *testing.T) {
 		}
 	}
 	var got query
-	err := jsonutil.UnmarshalGraphQL([]byte(`{
+	err := graphjson.Unmarshal([]byte(`{
 		"viewer": {
 			"login": "shurcooL-test",
 			"createdAt": "2017-06-29T04:12:01Z"
@@ -55,7 +55,7 @@ func BenchmarkUnmarshalGraphQL(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		now := time.Now().UTC()
 		var got query
-		err := jsonutil.UnmarshalGraphQL([]byte(`{
+		err := graphjson.Unmarshal([]byte(`{
 			"viewer": {
 				"login": "shurcooL-test",
 				"createdAt": "`+now.Format(time.RFC3339Nano)+`"
