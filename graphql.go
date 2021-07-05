@@ -27,6 +27,7 @@ func Unmarshal(data []byte, v interface{}) error {
 	case io.EOF:
 		// Expect to get io.EOF. There shouldn't be any more
 		// tokens left after we've decoded v successfully.
+		fixStructWithTypename(reflect.ValueOf(v))
 		return nil
 	case nil:
 		return fmt.Errorf("invalid token '%v' after top-level value", tok)
@@ -161,6 +162,10 @@ func (d *decoder) decode() error {
 					v := d.vs[i][len(d.vs[i])-1]
 					frontier[i] = v
 					// TODO: Do this recursively or not? Add a test case if needed.
+					//
+					// type A struct { B *B }{ B: nil }
+					// ↓
+					// A{B: &B{}}
 					if v.Kind() == reflect.Ptr && v.IsNil() {
 						v.Set(reflect.New(v.Type().Elem())) // v = new(T).
 					}
@@ -295,6 +300,78 @@ func isGraphQLFragment(f reflect.StructField) bool {
 	}
 	value = strings.TrimSpace(value) // TODO: Parse better.
 	return strings.HasPrefix(value, "...")
+}
+
+// isTypename reports whether struct field f is a GraphQL __typename field.
+func isTypename(f reflect.StructField) bool {
+	value, ok := f.Tag.Lookup("graphql")
+	if !ok {
+		return false
+	}
+	value = strings.TrimSpace(value) // TODO: Parse better.
+	return value == "__typename"
+}
+
+func fixStructWithTypename(v reflect.Value) {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() == reflect.Slice {
+		for i := 0; i < v.Len(); i++ {
+			fixStructWithTypename(v.Index(i))
+		}
+	}
+	if v.Kind() == reflect.Struct {
+		// find "__typename" key
+		var typeName string
+		for i := 0; i < v.NumField(); i++ {
+			if isTypename(v.Type().Field(i)) {
+				iv, ok := v.Field(i).Interface().(string)
+				if ok {
+					typeName = iv
+					break
+				}
+			}
+		}
+
+		// If the field is a fragment and does not match the typename,
+		// initialize the struct
+		for i := 0; i < v.NumField(); i++ {
+			// case of "foo": [...]
+			if v.Field(i).Kind() == reflect.Slice {
+				fixStructWithTypename(v.Field(i))
+				continue
+			}
+
+			if typeName == "" {
+				return
+			}
+
+			// case of field is like "fragmentField fragmentField `graphql:"... on Fragment"`"
+			fieldType := v.Type().Field(i)
+			if isGraphQLFragment(fieldType) && notEqualToTypeCondition(fieldType, typeName) {
+				e := v.Field(i)
+				v.Field(i).Set(reflect.Zero(e.Type()))
+			}
+		}
+	}
+}
+
+// notEqualToTypeCondition makes sure that the typecondition is not equal to typename.
+func notEqualToTypeCondition(f reflect.StructField, typename string) bool {
+	value, ok := f.Tag.Lookup("graphql")
+	if !ok {
+		return false
+	}
+
+	// TODO(codehex): change to better handling
+	sep := strings.Split(value, " on ")
+	if len(sep) != 2 {
+		return false
+	}
+	// sep[0] == "..."
+	value = strings.TrimSpace(sep[1]) // TODO: Parse better.
+	return value != typename
 }
 
 // unmarshalValue unmarshals JSON value into v.
