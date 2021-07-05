@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Code-Hex/go-graphjson"
+	"github.com/google/go-cmp/cmp"
 	"github.com/shurcooL/graphql"
 )
 
@@ -291,13 +292,11 @@ func TestUnmarshal_union(t *testing.T) {
 		CreatedAt time.Time
 	}
 	type issueTimelineItem struct {
-		Typename      string        `graphql:"__typename"`
 		ClosedEvent   closedEvent   `graphql:"... on ClosedEvent"`
 		ReopenedEvent reopenedEvent `graphql:"... on ReopenedEvent"`
 	}
 	var got issueTimelineItem
 	err := graphjson.Unmarshal([]byte(`{
-		"__typename": "ClosedEvent",
 		"createdAt": "2017-06-29T04:12:01Z",
 		"actor": {
 			"login": "shurcooL-test"
@@ -307,7 +306,6 @@ func TestUnmarshal_union(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := issueTimelineItem{
-		Typename: "ClosedEvent",
 		ClosedEvent: closedEvent{
 			Actor: actor{
 				Login: "shurcooL-test",
@@ -321,8 +319,131 @@ func TestUnmarshal_union(t *testing.T) {
 			CreatedAt: time.Unix(1498709521, 0).UTC(),
 		},
 	}
-	if !reflect.DeepEqual(got, want) {
-		t.Error("not equal")
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got)\n%s", diff)
+	}
+}
+
+func TestUnmarshal_union_typename(t *testing.T) {
+	/*
+		{
+			__typename
+			... on ClosedEvent {
+				createdAt
+				actor {login}
+			}
+			... on ReopenedEvent {
+				createdAt
+				actor {login}
+			}
+		}
+	*/
+	type actor struct{ Login graphql.String }
+	type closedEvent struct {
+		Actor     actor
+		CreatedAt time.Time
+	}
+	type reopenedEvent struct {
+		Actor     actor
+		CreatedAt time.Time
+	}
+	type issueTimelineItem struct {
+		ClosedEvent   closedEvent   `graphql:"... on ClosedEvent"`
+		ReopenedEvent reopenedEvent `graphql:"... on ReopenedEvent"`
+		Typename      string        `graphql:"__typename"`
+	}
+	var got issueTimelineItem
+	err := graphjson.Unmarshal([]byte(`{
+		"createdAt": "2017-06-29T04:12:01Z",
+		"actor": {
+			"login": "shurcooL-test"
+		},
+		"__typename": "ClosedEvent"
+	}`), &got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := issueTimelineItem{
+		Typename: "ClosedEvent",
+		ClosedEvent: closedEvent{
+			Actor: actor{
+				Login: "shurcooL-test",
+			},
+			CreatedAt: time.Unix(1498709521, 0).UTC(),
+		},
+		ReopenedEvent: reopenedEvent{},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got)\n%s", diff)
+	}
+}
+
+func TestUnmarshal_union_typename_in_array(t *testing.T) {
+	type actor struct{ Login graphql.String }
+	type closedEvent struct {
+		Actor     actor
+		CreatedAt time.Time
+	}
+	type reopenedEvent struct {
+		Actor     actor
+		CreatedAt time.Time
+	}
+	type issueTimelineItem struct {
+		ClosedEvent   closedEvent   `graphql:"... on ClosedEvent"`
+		ReopenedEvent reopenedEvent `graphql:"... on ReopenedEvent"`
+		Typename      string        `graphql:"__typename"`
+	}
+	type events struct {
+		Foo []issueTimelineItem `graphql:"foo"`
+	}
+	var got events
+	err := graphjson.Unmarshal([]byte(`{
+		"foo": [
+			{
+				"createdAt": "2017-06-29T04:12:01Z",
+				"actor": {
+					"login": "shurcooL-test"
+				},
+				"__typename": "ClosedEvent"
+			},
+			{
+				"createdAt": "2017-06-29T04:12:01Z",
+				"actor": {
+					"login": "shurcooL-test2"
+				},
+				"__typename": "ReopenedEvent"
+			}
+		]
+	}`), &got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := events{
+		Foo: []issueTimelineItem{
+			{
+				Typename: "ClosedEvent",
+				ClosedEvent: closedEvent{
+					Actor: actor{
+						Login: "shurcooL-test",
+					},
+					CreatedAt: time.Unix(1498709521, 0).UTC(),
+				},
+				ReopenedEvent: reopenedEvent{},
+			},
+			{
+				Typename: "ReopenedEvent",
+				ReopenedEvent: reopenedEvent{
+					Actor: actor{
+						Login: "shurcooL-test2",
+					},
+					CreatedAt: time.Unix(1498709521, 0).UTC(),
+				},
+				ClosedEvent: closedEvent{},
+			},
+		},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got)\n%s", diff)
 	}
 }
 
