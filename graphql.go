@@ -326,9 +326,15 @@ func fixStructWithTypename(v reflect.Value) {
 		var typeName string
 		for i := 0; i < v.NumField(); i++ {
 			if isTypename(v.Type().Field(i)) {
-				iv, ok := v.Field(i).Interface().(string)
+				iface := v.Field(i).Interface()
+				iv, ok := iface.(string)
 				if ok {
 					typeName = iv
+					break
+				}
+				iv2, ok2 := iface.(*string)
+				if ok2 {
+					typeName = *iv2
 					break
 				}
 			}

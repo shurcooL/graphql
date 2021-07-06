@@ -391,7 +391,7 @@ func TestUnmarshal_union_typename_in_array(t *testing.T) {
 	type issueTimelineItem struct {
 		ClosedEvent   closedEvent   `graphql:"... on ClosedEvent"`
 		ReopenedEvent reopenedEvent `graphql:"... on ReopenedEvent"`
-		Typename      string        `graphql:"__typename"`
+		Typename      *string       `graphql:"__typename"`
 	}
 	type events struct {
 		Foo []issueTimelineItem `graphql:"foo"`
@@ -421,7 +421,7 @@ func TestUnmarshal_union_typename_in_array(t *testing.T) {
 	want := events{
 		Foo: []issueTimelineItem{
 			{
-				Typename: "ClosedEvent",
+				Typename: stringP("ClosedEvent"),
 				ClosedEvent: closedEvent{
 					Actor: actor{
 						Login: "shurcooL-test",
@@ -431,7 +431,7 @@ func TestUnmarshal_union_typename_in_array(t *testing.T) {
 				ReopenedEvent: reopenedEvent{},
 			},
 			{
-				Typename: "ReopenedEvent",
+				Typename: stringP("ReopenedEvent"),
 				ReopenedEvent: reopenedEvent{
 					Actor: actor{
 						Login: "shurcooL-test2",
@@ -445,6 +445,10 @@ func TestUnmarshal_union_typename_in_array(t *testing.T) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("(-want, +got)\n%s", diff)
 	}
+}
+
+func stringP(s string) *string {
+	return &s
 }
 
 // Issue https://github.com/shurcooL/githubv4/issues/18.
