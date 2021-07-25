@@ -16,6 +16,16 @@ import (
 type Client struct {
 	url        string // GraphQL server URL.
 	httpClient *http.Client
+	RequestFactory func(method, url string, body io.Reader) (*http.Request, error)
+}
+
+// defaultRequestFactory creates JSON requests
+func defaultRequestFactory(method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err == nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	return req, err
 }
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
@@ -27,6 +37,7 @@ func NewClient(url string, httpClient *http.Client) *Client {
 	return &Client{
 		url:        url,
 		httpClient: httpClient,
+		RequestFactory: defaultRequestFactory,
 	}
 }
 
@@ -65,7 +76,11 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	if err != nil {
 		return err
 	}
-	resp, err := ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
+	req, err := c.RequestFactory(http.MethodPost, c.url, &buf)
+	if err != nil {
+		return err
+	}
+	resp, err := ctxhttp.Do(ctx, c.httpClient, req)
 	if err != nil {
 		return err
 	}
