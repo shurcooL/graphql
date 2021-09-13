@@ -263,7 +263,7 @@ func TestConstructMutation(t *testing.T) {
 					Content:   ReactionContentThumbsUp,
 				},
 			},
-			want: `mutation($input:AddReactionInput!){addReaction(input:$input){subject{reactionGroups{users{totalCount}}}}}`,
+			want: `mutation ($input:AddReactionInput!){addReaction(input:$input){subject{reactionGroups{users{totalCount}}}}}`,
 		},
 	}
 	for _, tc := range tests {

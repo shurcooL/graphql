@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/hasura/go-graphql-client/internal/jsonutil"
 	"golang.org/x/net/context/ctxhttp"
@@ -199,7 +200,11 @@ type errors []struct {
 
 // Error implements error interface.
 func (e errors) Error() string {
-	return e[0].Message
+	b := strings.Builder{}
+	for _, err := range e {
+		b.WriteString(fmt.Sprintf("Message: %s, Locations: %+v", err.Message, err.Locations))
+	}
+	return b.String()
 }
 
 type operationType uint8
