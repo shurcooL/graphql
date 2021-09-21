@@ -282,7 +282,7 @@ fmt.Printf("Created a %v star review: %v\n", m.CreateReview.Stars, m.CreateRevie
 // Created a 5 star review: This is a great movie!
 ```
 
-### Subcriptions
+### Subscription
 
 Usage
 -----
@@ -393,6 +393,59 @@ client.OnDisconnected(fn func())
 // If returns error, the websocket connection will be terminated
 client.OnError(onError func(sc *SubscriptionClient, err error) error)
 ```
+
+#### Custom WebSocket client
+
+By default the subscription client uses [nhooyr WebSocket client](https://github.com/nhooyr/websocket). If you need to customize the client, or prefer using [Gorilla WebSocket](https://github.com/gorilla/websocket), let's follow the Websocket interface and replace the constructor with `WithWebSocket` method:
+
+```go
+// WebsocketHandler abstracts WebSocket connection functions
+// ReadJSON and WriteJSON data of a frame from the WebSocket connection.
+// Close the WebSocket connection.
+type WebsocketConn interface {
+	ReadJSON(v interface{}) error
+	WriteJSON(v interface{}) error
+	Close() error
+	// SetReadLimit sets the maximum size in bytes for a message read from the peer. If a
+	// message exceeds the limit, the connection sends a close message to the peer
+	// and returns ErrReadLimit to the application.
+	SetReadLimit(limit int64)
+}
+
+// WithWebSocket replaces customized websocket client constructor
+func (sc *SubscriptionClient) WithWebSocket(fn func(sc *SubscriptionClient) (WebsocketConn, error)) *SubscriptionClient
+```
+
+**Example**
+
+```Go
+
+// the default websocket constructor
+func newWebsocketConn(sc *SubscriptionClient) (WebsocketConn, error) {
+	options := &websocket.DialOptions{
+		Subprotocols: []string{"graphql-ws"},
+	}
+	c, _, err := websocket.Dial(sc.GetContext(), sc.GetURL(), options)
+	if err != nil {
+		return nil, err
+	}
+
+	// The default WebsocketHandler implementation using nhooyr's
+	return &WebsocketHandler{
+		ctx:     sc.GetContext(),
+		Conn:    c,
+		timeout: sc.GetTimeout(),
+	}, nil
+}
+
+client := graphql.NewSubscriptionClient("wss://example.com/graphql")
+defer client.Close()
+
+client.WithWebSocket(newWebsocketConn)
+
+client.Run()
+```
+
 
 ### With operation name
 

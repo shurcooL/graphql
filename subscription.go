@@ -61,7 +61,7 @@ func (om OperationMessage) String() string {
 	return string(bs)
 }
 
-// WebsocketHandler abstracts WebSocket connecton functions
+// WebsocketHandler abstracts WebSocket connection functions
 // ReadJSON and WriteJSON data of a frame from the WebSocket connection.
 // Close the WebSocket connection.
 type WebsocketConn interface {
@@ -183,13 +183,13 @@ func (sc *SubscriptionClient) OnError(onError func(sc *SubscriptionClient, err e
 	return sc
 }
 
-// OnConnected event is triggered when the websocket connected to GraphQL server sucessfully
+// OnConnected event is triggered when the websocket connected to GraphQL server successfully
 func (sc *SubscriptionClient) OnConnected(fn func()) *SubscriptionClient {
 	sc.onConnected = fn
 	return sc
 }
 
-// OnDisconnected event is triggered when the websocket server was stil down after retry timeout
+// OnDisconnected event is triggered when the websocket server was still down after retry timeout
 func (sc *SubscriptionClient) OnDisconnected(fn func()) *SubscriptionClient {
 	sc.onDisconnected = fn
 	return sc
@@ -572,26 +572,26 @@ func (sc *SubscriptionClient) Close() (err error) {
 }
 
 // default websocket handler implementation using https://github.com/nhooyr/websocket
-type websocketHandler struct {
+type WebsocketHandler struct {
 	ctx     context.Context
 	timeout time.Duration
 	*websocket.Conn
 }
 
-func (wh *websocketHandler) WriteJSON(v interface{}) error {
+func (wh *WebsocketHandler) WriteJSON(v interface{}) error {
 	ctx, cancel := context.WithTimeout(wh.ctx, wh.timeout)
 	defer cancel()
 
 	return wsjson.Write(ctx, wh.Conn, v)
 }
 
-func (wh *websocketHandler) ReadJSON(v interface{}) error {
+func (wh *WebsocketHandler) ReadJSON(v interface{}) error {
 	ctx, cancel := context.WithTimeout(wh.ctx, wh.timeout)
 	defer cancel()
 	return wsjson.Read(ctx, wh.Conn, v)
 }
 
-func (wh *websocketHandler) Close() error {
+func (wh *WebsocketHandler) Close() error {
 	return wh.Conn.Close(websocket.StatusNormalClosure, "close websocket")
 }
 
@@ -605,7 +605,7 @@ func newWebsocketConn(sc *SubscriptionClient) (WebsocketConn, error) {
 		return nil, err
 	}
 
-	return &websocketHandler{
+	return &WebsocketHandler{
 		ctx:     sc.GetContext(),
 		Conn:    c,
 		timeout: sc.GetTimeout(),
