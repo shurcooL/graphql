@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -71,8 +70,8 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
+		body, err := ioutil.ReadAll(resp.Body)
+		return &GithubError{Status: resp.Status, StatusCode: resp.StatusCode, Body: body, Err: err}
 	}
 	var out struct {
 		Data   *json.RawMessage
