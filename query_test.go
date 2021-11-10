@@ -192,7 +192,7 @@ func TestConstructQuery(t *testing.T) {
 		{
 			inV: func() interface{} {
 				type query struct {
-					Repository map[string]interface{} `graphql:"repository(owner: $repositoryOwner, name: $repositoryName)"`
+					Repository [][2]interface{} `graphql:"repository(owner: $repositoryOwner, name: $repositoryName)"`
 				}
 				type issue struct {
 					ReactionGroups []struct {
@@ -203,8 +203,8 @@ func TestConstructQuery(t *testing.T) {
 						} `graphql:"users(first:10)"`
 					}
 				}
-				return query{Repository: map[string]interface{}{
-					"issue(number: $issueNumber)": issue{},
+				return query{Repository: [][2]interface{}{
+					{"issue(number: $issueNumber)", issue{}},
 				}}
 			}(),
 			inVariables: map[string]interface{}{
@@ -218,26 +218,26 @@ func TestConstructQuery(t *testing.T) {
 		{
 			inV: func() interface{} {
 				type query struct {
-					Repository map[string]interface{} `graphql:"repository(owner: $repositoryOwner, name: $repositoryName)"`
+					Repository [][2]interface{} `graphql:"repository(owner: $repositoryOwner, name: $repositoryName)"`
 				}
 				type issue struct {
 					ReactionGroups []struct {
-						Users map[string]interface{} `graphql:"users(first:10)"`
+						Users [][2]interface{} `graphql:"users(first:10)"`
 					}
 				}
 				type nodes []struct {
 					Login String
 				}
-				return query{Repository: map[string]interface{}{
-					"issue(number: $issueNumber)": issue{
+				return query{Repository: [][2]interface{}{
+					{"issue(number: $issueNumber)", issue{
 						ReactionGroups: []struct {
-							Users map[string]interface{} `graphql:"users(first:10)"`
+							Users [][2]interface{} `graphql:"users(first:10)"`
 						}{
-							{Users: map[string]interface{}{
-								"nodes": nodes{},
+							{Users: [][2]interface{}{
+								{"nodes", nodes{}},
 							}},
 						},
-					},
+					}},
 				}}
 			}(),
 			inVariables: map[string]interface{}{
@@ -330,9 +330,9 @@ func TestConstructMutation(t *testing.T) {
 			want: `mutation($input:AddReactionInput!){addReaction(input:$input){subject{reactionGroups{users{totalCount}}}}}`,
 		},
 		{
-			inV: map[string]interface{}{
-				"createUser(login:$login1)": &CreateUser{},
-				"deleteUser(login:$login2)": &DeleteUser{},
+			inV: [][2]interface{}{
+				{"createUser(login:$login1)", &CreateUser{}},
+				{"deleteUser(login:$login2)", &DeleteUser{}},
 			},
 			inVariables: map[string]interface{}{
 				"login1": String("grihabor"),

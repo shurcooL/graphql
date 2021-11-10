@@ -3,6 +3,7 @@ package graphql
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"reflect"
 	"sort"
@@ -98,8 +99,6 @@ func writeQuery(w io.Writer, t reflect.Type, v reflect.Value, inline bool) {
 	switch t.Kind() {
 	case reflect.Ptr:
 		writeQuery(w, t.Elem(), ElemSafe(v), false)
-	case reflect.Slice:
-		writeQuery(w, t.Elem(), IndexSafe(v, 0), false)
 	case reflect.Struct:
 		// If the type implements json.Unmarshaler, it's a scalar. Don't expand it.
 		if reflect.PtrTo(t).Implements(jsonUnmarshaler) {
@@ -127,17 +126,30 @@ func writeQuery(w io.Writer, t reflect.Type, v reflect.Value, inline bool) {
 		if !inline {
 			io.WriteString(w, "}")
 		}
-	case reflect.Map: // handle map[string]interface{}
-		it := v.MapRange()
+	case reflect.Slice:
+		if t.Elem().Kind() != reflect.Array {
+			writeQuery(w, t.Elem(), IndexSafe(v, 0), false)
+			return
+		}
+		// handle [][2]interface{} like an ordered map
+		if t.Elem().Len() != 2 {
+			err := fmt.Errorf("only arrays of len 2 are supported, got %v", t.Elem())
+			panic(err.Error())
+		}
+		sliceOfPairs := v
 		_, _ = io.WriteString(w, "{")
-		for it.Next() {
+		for i := 0; i < sliceOfPairs.Len(); i++ {
+			pair := sliceOfPairs.Index(i)
 			// it.Value() returns interface{}, so we need to use reflect.ValueOf
 			// to cast it away
-			key, val := it.Key(), reflect.ValueOf(it.Value().Interface())
-			_, _ = io.WriteString(w, key.String())
+			key, val := pair.Index(0), reflect.ValueOf(pair.Index(1).Interface())
+			_, _ = io.WriteString(w, key.Interface().(string))
 			writeQuery(w, val.Type(), val, false)
 		}
 		_, _ = io.WriteString(w, "}")
+	case reflect.Map:
+		err := fmt.Errorf("type %v is not supported, use [][2]interface{} instead", t)
+		panic(err.Error())
 	}
 }
 
