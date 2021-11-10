@@ -88,16 +88,18 @@ func writeArgumentType(w io.Writer, t reflect.Type, value bool) {
 // E.g., struct{Foo Int, BarBaz *Boolean} -> "{foo,barBaz}".
 func query(v interface{}) string {
 	var buf bytes.Buffer
-	writeQuery(&buf, reflect.TypeOf(v), false)
+	writeQuery(&buf, reflect.TypeOf(v), reflect.ValueOf(v), false)
 	return buf.String()
 }
 
 // writeQuery writes a minified query for t to w.
 // If inline is true, the struct fields of t are inlined into parent struct.
-func writeQuery(w io.Writer, t reflect.Type, inline bool) {
+func writeQuery(w io.Writer, t reflect.Type, v reflect.Value, inline bool) {
 	switch t.Kind() {
-	case reflect.Ptr, reflect.Slice:
-		writeQuery(w, t.Elem(), false)
+	case reflect.Ptr:
+		writeQuery(w, t.Elem(), ElemSafe(v), false)
+	case reflect.Slice:
+		writeQuery(w, t.Elem(), IndexSafe(v, 0), false)
 	case reflect.Struct:
 		// If the type implements json.Unmarshaler, it's a scalar. Don't expand it.
 		if reflect.PtrTo(t).Implements(jsonUnmarshaler) {
@@ -120,12 +122,51 @@ func writeQuery(w io.Writer, t reflect.Type, inline bool) {
 					io.WriteString(w, ident.ParseMixedCaps(f.Name).ToLowerCamelCase())
 				}
 			}
-			writeQuery(w, f.Type, inlineField)
+			writeQuery(w, f.Type, FieldSafe(v, i), inlineField)
 		}
 		if !inline {
 			io.WriteString(w, "}")
 		}
+	case reflect.Map: // handle map[string]interface{}
+		it := v.MapRange()
+		_, _ = io.WriteString(w, "{")
+		for it.Next() {
+			// it.Value() returns interface{}, so we need to use reflect.ValueOf
+			// to cast it away
+			key, val := it.Key(), reflect.ValueOf(it.Value().Interface())
+			_, _ = io.WriteString(w, key.String())
+			writeQuery(w, val.Type(), val, false)
+		}
+		_, _ = io.WriteString(w, "}")
 	}
+}
+
+func IndexSafe(v reflect.Value, i int) reflect.Value {
+	if v.IsValid() && i < v.Len() {
+		return v.Index(i)
+	}
+	return reflect.ValueOf(nil)
+}
+
+func TypeSafe(v reflect.Value) reflect.Type {
+	if v.IsValid() {
+		return v.Type()
+	}
+	return reflect.TypeOf((interface{})(nil))
+}
+
+func ElemSafe(v reflect.Value) reflect.Value {
+	if v.IsValid() {
+		return v.Elem()
+	}
+	return reflect.ValueOf(nil)
+}
+
+func FieldSafe(valStruct reflect.Value, i int) reflect.Value {
+	if valStruct.IsValid() {
+		return valStruct.Field(i)
+	}
+	return reflect.ValueOf(nil)
 }
 
 var jsonUnmarshaler = reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
