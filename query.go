@@ -160,13 +160,6 @@ func IndexSafe(v reflect.Value, i int) reflect.Value {
 	return reflect.ValueOf(nil)
 }
 
-func TypeSafe(v reflect.Value) reflect.Type {
-	if v.IsValid() {
-		return v.Type()
-	}
-	return reflect.TypeOf((interface{})(nil))
-}
-
 func ElemSafe(v reflect.Value) reflect.Value {
 	if v.IsValid() {
 		return v.Elem()
