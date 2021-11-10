@@ -53,7 +53,13 @@ type decoder struct {
 	// The reason there's more than one stack is because we might be unmarshaling
 	// a single JSON value into multiple GraphQL fragments or embedded structs, so
 	// we keep track of them all.
-	vs [][]reflect.Value
+	vs []valueSlice
+}
+
+type valueSlice []reflect.Value
+
+func (s valueSlice) Last() reflect.Value {
+	return s[len(s)-1]
 }
 
 // Decode decodes a single JSON value from d.tokenizer into v.
@@ -62,7 +68,7 @@ func (d *decoder) Decode(v interface{}) error {
 	if rv.Kind() != reflect.Ptr {
 		return fmt.Errorf("cannot decode into non-pointer %T", v)
 	}
-	d.vs = [][]reflect.Value{{rv.Elem()}}
+	d.vs = []valueSlice{{rv.Elem()}}
 	return d.decode()
 }
 
@@ -88,13 +94,19 @@ func (d *decoder) decode() error {
 			}
 			someFieldExist := false
 			for i := range d.vs {
-				v := d.vs[i][len(d.vs[i])-1]
+				v := d.vs[i].Last()
 				if v.Kind() == reflect.Ptr {
 					v = v.Elem()
 				}
 				var f reflect.Value
-				if v.Kind() == reflect.Struct {
+				switch v.Kind() {
+				case reflect.Struct:
 					f = fieldByGraphQLName(v, key)
+					if f.IsValid() {
+						someFieldExist = true
+					}
+				case reflect.Slice:
+					f = orderedMapValueByGraphQLName(v, key)
 					if f.IsValid() {
 						someFieldExist = true
 					}
@@ -118,7 +130,7 @@ func (d *decoder) decode() error {
 		case d.state() == '[' && tok != json.Delim(']'):
 			someSliceExist := false
 			for i := range d.vs {
-				v := d.vs[i][len(d.vs[i])-1]
+				v := d.vs[i].Last()
 				if v.Kind() == reflect.Ptr {
 					v = v.Elem()
 				}
@@ -160,7 +172,7 @@ func (d *decoder) decode() error {
 
 				frontier := make([]reflect.Value, len(d.vs)) // Places to look for GraphQL fragments/embedded structs.
 				for i := range d.vs {
-					v := d.vs[i][len(d.vs[i])-1]
+					v := d.vs[i].Last()
 					frontier[i] = v
 					// TODO: Do this recursively or not? Add a test case if needed.
 					if v.Kind() == reflect.Ptr && v.IsNil() {
@@ -242,7 +254,7 @@ func (d *decoder) state() json.Delim {
 
 // popAllVs pops from all d.vs stacks, keeping only non-empty ones.
 func (d *decoder) popAllVs() {
-	var nonEmpty [][]reflect.Value
+	var nonEmpty []valueSlice
 	for i := range d.vs {
 		d.vs[i] = d.vs[i][:len(d.vs[i])-1]
 		if len(d.vs[i]) > 0 {
@@ -262,6 +274,18 @@ func fieldByGraphQLName(v reflect.Value, name string) reflect.Value {
 		}
 		if hasGraphQLName(v.Type().Field(i), name) {
 			return v.Field(i)
+		}
+	}
+	return reflect.Value{}
+}
+
+// orderedMapValueByGraphQLName takes [][2]string, interprets it as an ordered map
+// and returns value for corresponding key, or invalid reflect.Value if none found.
+func orderedMapValueByGraphQLName(v reflect.Value, key string) reflect.Value {
+	for i := 0; i < v.Len(); i++ {
+		pair := v.Index(i)
+		if pair.Index(0).Interface().(string) == key {
+			return pair.Index(1)
 		}
 	}
 	return reflect.Value{}
