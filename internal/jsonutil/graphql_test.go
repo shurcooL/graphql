@@ -95,7 +95,7 @@ func TestUnmarshalGraphQL_orderedMap(t *testing.T) {
 		{"foo", graphql.String("bar")},
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Error("not equal")
+		t.Errorf("not equal: %v != %v", got, want)
 	}
 }
 
@@ -123,36 +123,7 @@ func TestUnmarshalGraphQL_array(t *testing.T) {
 		Baz: []graphql.String(nil),
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Error("not equal")
-	}
-}
-
-func TestUnmarshalGraphQL_orderedMapInArray(t *testing.T) {
-	type query struct {
-		Foo [][][2]interface{}
-	}
-	got := query{
-		Foo: [][][2]interface{}{{
-			{"x", graphql.String("")},
-		}},
-	}
-	err := jsonutil.UnmarshalGraphQL([]byte(`{
-		"foo": [
-			{"x": "bar"}
-			{"x": "baz"}
-		],
-	}`), &got)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := query{
-		Foo: [][][2]interface{}{{
-			{"x", "bar"},
-			{"x", "baz"},
-		}},
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Error("not equal")
+		t.Errorf("not equal: %v != %v", got, want)
 	}
 }
 
@@ -190,6 +161,35 @@ func TestUnmarshalGraphQL_objectArray(t *testing.T) {
 		Foo: []struct{ Name graphql.String }{
 			{"bar"},
 			{"baz"},
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Error("not equal")
+	}
+}
+
+func TestUnmarshalGraphQL_orderedMapArray(t *testing.T) {
+	type query struct {
+		Foo [][][2]interface{}
+	}
+	got := query{
+		Foo: [][][2]interface{}{
+			{{"name", graphql.String("")}},
+		},
+	}
+	err := jsonutil.UnmarshalGraphQL([]byte(`{
+		"foo": [
+			{"name": "bar"},
+			{"name": "baz"}
+		]
+	}`), &got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := query{
+		Foo: [][][2]interface{}{
+			{{"name", graphql.String("bar")}},
+			{{"name", graphql.String("baz")}},
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -242,6 +242,37 @@ func TestUnmarshalGraphQL_objectPointerArray(t *testing.T) {
 			{"bar"},
 			nil,
 			{"baz"},
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Error("not equal")
+	}
+}
+
+func TestUnmarshalGraphQL_orderedMapNullInArray(t *testing.T) {
+	type query struct {
+		Foo [][][2]interface{}
+	}
+	got := query{
+		Foo: [][][2]interface{}{
+			{{"name", ""}},
+		},
+	}
+	err := jsonutil.UnmarshalGraphQL([]byte(`{
+		"foo": [
+			{"name": "bar"},
+			null,
+			{"name": "baz"}
+		]
+	}`), &got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := query{
+		Foo: [][][2]interface{}{
+			{{"name", "bar"}},
+			nil,
+			{{"name", "baz"}},
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -315,6 +346,18 @@ func TestUnmarshalGraphQL_multipleValues(t *testing.T) {
 	}
 }
 
+func TestUnmarshalGraphQL_multipleValuesInOrderedMap(t *testing.T) {
+	type query [][2]interface{}
+	q := query{{"foo", ""}}
+	err := jsonutil.UnmarshalGraphQL([]byte(`{"foo": "bar"}{"foo": "baz"}`), &q)
+	if err == nil {
+		t.Fatal("got error: nil, want: non-nil")
+	}
+	if got, want := err.Error(), "invalid token '{' after top-level value"; got != want {
+		t.Errorf("got error: %v, want: %v", got, want)
+	}
+}
+
 func TestUnmarshalGraphQL_union(t *testing.T) {
 	/*
 		{
@@ -371,6 +414,56 @@ func TestUnmarshalGraphQL_union(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Error("not equal")
+	}
+}
+
+func TestUnmarshalGraphQL_orderedMapUnion(t *testing.T) {
+	/*
+		{
+			__typename
+			... on ClosedEvent {
+				createdAt
+				actor {login}
+			}
+			... on ReopenedEvent {
+				createdAt
+				actor {login}
+			}
+		}
+	*/
+	actor := [][2]interface{}{{"login", ""}}
+	closedEvent := [][2]interface{}{{"actor", actor}, {"createdAt", time.Time{}}}
+	reopenedEvent := [][2]interface{}{{"actor", actor}, {"createdAt", time.Time{}}}
+	got := [][2]interface{}{
+		{"__typename", ""},
+		{"... on ClosedEvent", closedEvent},
+		{"... on ReopenedEvent", reopenedEvent},
+	}
+	err := jsonutil.UnmarshalGraphQL([]byte(`{
+		"__typename": "ClosedEvent",
+		"createdAt": "2017-06-29T04:12:01Z",
+		"actor": {
+			"login": "shurcooL-test"
+		}
+	}`), &got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := [][2]interface{}{
+		{"__typename", "ClosedEvent"},
+		{"... on ClosedEvent", [][2]interface{}{
+			{"actor", [][2]interface{}{{"login", "shurcooL-test"}}},
+			{"createdAt", time.Unix(1498709521, 0).UTC()},
+		}},
+		{"... on ReopenedEvent", [][2]interface{}{
+			{"actor", [][2]interface{}{{"login", "shurcooL-test"}}},
+			{"createdAt", time.Unix(1498709521, 0).UTC()},
+		}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("not equal:\ngot: %v\nwant: %v", got, want)
+		createdAt := got[1][1].([][2]interface{})[1]
+		t.Logf("key: %s, type: %v", createdAt[0], reflect.TypeOf(createdAt[1]))
 	}
 }
 
