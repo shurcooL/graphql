@@ -418,6 +418,9 @@ func unmarshalValue(value json.Token, v reflect.Value) error {
 	}
 	ty := v.Type()
 	if ty.Kind() == reflect.Interface {
+		if !v.Elem().IsValid() {
+			return json.Unmarshal(b, v.Addr().Interface())
+		}
 		ty = v.Elem().Type()
 	}
 	newVal := reflect.New(ty)
