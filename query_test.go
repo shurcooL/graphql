@@ -229,7 +229,7 @@ func TestConstructQuery(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		got := constructQuery(tc.inV, tc.inVariables)
+		got := constructQuery(tc.inV, tc.inVariables, "")
 		if got != tc.want {
 			t.Errorf("\ngot:  %q\nwant: %q\n", got, tc.want)
 		}
@@ -264,7 +264,7 @@ func TestConstructMutation(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		got := constructMutation(tc.inV, tc.inVariables)
+		got := constructMutation(tc.inV, tc.inVariables, "")
 		if got != tc.want {
 			t.Errorf("\ngot:  %q\nwant: %q\n", got, tc.want)
 		}

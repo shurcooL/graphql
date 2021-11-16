@@ -300,7 +300,7 @@ func isGraphQLFragment(f reflect.StructField) bool {
 }
 
 // unmarshalValue unmarshals JSON value into v.
-// v must be addressable and not obtained by the use of unexported
+// Argument v must be addressable and not obtained by the use of unexported
 // struct fields, otherwise unmarshalValue will panic.
 func unmarshalValue(value json.Token, v reflect.Value) error {
 	b, err := json.Marshal(value) // TODO: Short-circuit (if profiling says it's worth it).

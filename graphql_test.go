@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/shurcooL/graphql"
+	graphql "github.com/cli/shurcooL-graphql"
 )
 
 func TestClient_Query_partialDataWithErrorResponse(t *testing.T) {
@@ -53,7 +53,7 @@ func TestClient_Query_partialDataWithErrorResponse(t *testing.T) {
 	if err == nil {
 		t.Fatal("got error: nil, want: non-nil")
 	}
-	if got, want := err.Error(), "Could not resolve to a node with the global id of 'NotExist'"; got != want {
+	if got, want := err.Error(), "Message: Could not resolve to a node with the global id of 'NotExist', Locations: [{Line:10 Column:4}]"; got != want {
 		t.Errorf("got error: %v, want: %v", got, want)
 	}
 	if q.Node1 == nil || q.Node1.ID != "MDEyOklzc3VlQ29tbWVudDE2OTQwNzk0Ng==" {
@@ -93,7 +93,7 @@ func TestClient_Query_noDataWithErrorResponse(t *testing.T) {
 	if err == nil {
 		t.Fatal("got error: nil, want: non-nil")
 	}
-	if got, want := err.Error(), "Field 'user' is missing required arguments: login"; got != want {
+	if got, want := err.Error(), "Message: Field 'user' is missing required arguments: login, Locations: [{Line:7 Column:3}]"; got != want {
 		t.Errorf("got error: %v, want: %v", got, want)
 	}
 	if q.User.Name != "" {

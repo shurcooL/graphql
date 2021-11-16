@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shurcooL/graphql"
-	"github.com/shurcooL/graphql/internal/jsonutil"
+	"github.com/cli/shurcooL-graphql"
+	"github.com/cli/shurcooL-graphql/internal/jsonutil"
 )
 
 func TestUnmarshalGraphQL(t *testing.T) {
@@ -243,7 +243,7 @@ func TestUnmarshalGraphQL_pointerWithInlineFragment(t *testing.T) {
 
 func TestUnmarshalGraphQL_unexportedField(t *testing.T) {
 	type query struct {
-		foo graphql.String
+		foo graphql.String //nolint
 	}
 	err := jsonutil.UnmarshalGraphQL([]byte(`{"foo": "bar"}`), new(query))
 	if err == nil {

@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
-	"github.com/shurcooL/graphql/internal/jsonutil"
+	"github.com/cli/shurcooL-graphql/internal/jsonutil"
 	"golang.org/x/net/context/ctxhttp"
 )
 
@@ -32,26 +33,36 @@ func NewClient(url string, httpClient *http.Client) *Client {
 
 // Query executes a single GraphQL query request,
 // with a query derived from q, populating the response into it.
-// q should be a pointer to struct that corresponds to the GraphQL schema.
+// Argument q should be a pointer to struct that corresponds to the GraphQL schema.
 func (c *Client) Query(ctx context.Context, q interface{}, variables map[string]interface{}) error {
-	return c.do(ctx, queryOperation, q, variables)
+	return c.do(ctx, queryOperation, q, variables, "")
+}
+
+// QueryNamed is the same as Query but allows a name to be specified for the query.
+func (c *Client) QueryNamed(ctx context.Context, queryName string, q interface{}, variables map[string]interface{}) error {
+	return c.do(ctx, queryOperation, q, variables, queryName)
 }
 
 // Mutate executes a single GraphQL mutation request,
 // with a mutation derived from m, populating the response into it.
-// m should be a pointer to struct that corresponds to the GraphQL schema.
+// Argument m should be a pointer to struct that corresponds to the GraphQL schema.
 func (c *Client) Mutate(ctx context.Context, m interface{}, variables map[string]interface{}) error {
-	return c.do(ctx, mutationOperation, m, variables)
+	return c.do(ctx, mutationOperation, m, variables, "")
+}
+
+// MutateNamed is the same as Mutate but allows a name to be specified for the mutation.
+func (c *Client) MutateNamed(ctx context.Context, queryName string, m interface{}, variables map[string]interface{}) error {
+	return c.do(ctx, mutationOperation, m, variables, queryName)
 }
 
 // do executes a single GraphQL operation.
-func (c *Client) do(ctx context.Context, op operationType, v interface{}, variables map[string]interface{}) error {
+func (c *Client) do(ctx context.Context, op operationType, v interface{}, variables map[string]interface{}, queryName string) error {
 	var query string
 	switch op {
 	case queryOperation:
-		query = constructQuery(v, variables)
+		query = constructQuery(v, variables, queryName)
 	case mutationOperation:
-		query = constructMutation(v, variables)
+		query = constructMutation(v, variables, queryName)
 	}
 	in := struct {
 		Query     string                 `json:"query"`
@@ -111,7 +122,11 @@ type errors []struct {
 
 // Error implements error interface.
 func (e errors) Error() string {
-	return e[0].Message
+	b := strings.Builder{}
+	for _, err := range e {
+		b.WriteString(fmt.Sprintf("Message: %s, Locations: %+v", err.Message, err.Locations))
+	}
+	return b.String()
 }
 
 type operationType uint8
@@ -119,5 +134,4 @@ type operationType uint8
 const (
 	queryOperation operationType = iota
 	mutationOperation
-	//subscriptionOperation // Unused.
 )

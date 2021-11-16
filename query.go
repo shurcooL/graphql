@@ -7,23 +7,32 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/shurcooL/graphql/ident"
+	"github.com/cli/shurcooL-graphql/ident"
 )
 
-func constructQuery(v interface{}, variables map[string]interface{}) string {
+func constructQuery(v interface{}, variables map[string]interface{}, queryName string) string {
 	query := query(v)
 	if len(variables) > 0 {
-		return "query(" + queryArguments(variables) + ")" + query
+		return "query" + queryNameFormat(queryName) + "(" + queryArguments(variables) + ")" + query
+	} else if queryName != "" {
+		return "query" + queryNameFormat(queryName) + query
 	}
 	return query
 }
 
-func constructMutation(v interface{}, variables map[string]interface{}) string {
+func constructMutation(v interface{}, variables map[string]interface{}, queryName string) string {
 	query := query(v)
 	if len(variables) > 0 {
-		return "mutation(" + queryArguments(variables) + ")" + query
+		return "mutation" + queryNameFormat(queryName) + "(" + queryArguments(variables) + ")" + query
 	}
-	return "mutation" + query
+	return "mutation" + queryNameFormat(queryName) + query
+}
+
+func queryNameFormat(n string) string {
+	if n != "" {
+		return " " + n
+	}
+	return n
 }
 
 // queryArguments constructs a minified arguments string for variables.
@@ -40,9 +49,9 @@ func queryArguments(variables map[string]interface{}) string {
 
 	var buf bytes.Buffer
 	for _, k := range keys {
-		io.WriteString(&buf, "$")
-		io.WriteString(&buf, k)
-		io.WriteString(&buf, ":")
+		_, _ = io.WriteString(&buf, "$")
+		_, _ = io.WriteString(&buf, k)
+		_, _ = io.WriteString(&buf, ":")
 		writeArgumentType(&buf, reflect.TypeOf(variables[k]), true)
 		// Don't insert a comma here.
 		// Commas in GraphQL are insignificant, and we want minified output.
@@ -52,7 +61,7 @@ func queryArguments(variables map[string]interface{}) string {
 }
 
 // writeArgumentType writes a minified GraphQL type for t to w.
-// value indicates whether t is a value (required) type or pointer (optional) type.
+// Argument value indicates whether t is a value (required) type or pointer (optional) type.
 // If value is true, then "!" is written at the end of t.
 func writeArgumentType(w io.Writer, t reflect.Type, value bool) {
 	if t.Kind() == reflect.Ptr {
@@ -64,21 +73,21 @@ func writeArgumentType(w io.Writer, t reflect.Type, value bool) {
 	switch t.Kind() {
 	case reflect.Slice, reflect.Array:
 		// List. E.g., "[Int]".
-		io.WriteString(w, "[")
+		_, _ = io.WriteString(w, "[")
 		writeArgumentType(w, t.Elem(), true)
-		io.WriteString(w, "]")
+		_, _ = io.WriteString(w, "]")
 	default:
 		// Named type. E.g., "Int".
 		name := t.Name()
 		if name == "string" { // HACK: Workaround for https://github.com/shurcooL/githubv4/issues/12.
 			name = "ID"
 		}
-		io.WriteString(w, name)
+		_, _ = io.WriteString(w, name)
 	}
 
 	if value {
 		// Value is a required type, so add "!" to the end.
-		io.WriteString(w, "!")
+		_, _ = io.WriteString(w, "!")
 	}
 }
 
@@ -104,26 +113,26 @@ func writeQuery(w io.Writer, t reflect.Type, inline bool) {
 			return
 		}
 		if !inline {
-			io.WriteString(w, "{")
+			_, _ = io.WriteString(w, "{")
 		}
 		for i := 0; i < t.NumField(); i++ {
 			if i != 0 {
-				io.WriteString(w, ",")
+				_, _ = io.WriteString(w, ",")
 			}
 			f := t.Field(i)
 			value, ok := f.Tag.Lookup("graphql")
 			inlineField := f.Anonymous && !ok
 			if !inlineField {
 				if ok {
-					io.WriteString(w, value)
+					_, _ = io.WriteString(w, value)
 				} else {
-					io.WriteString(w, ident.ParseMixedCaps(f.Name).ToLowerCamelCase())
+					_, _ = io.WriteString(w, ident.ParseMixedCaps(f.Name).ToLowerCamelCase())
 				}
 			}
 			writeQuery(w, f.Type, inlineField)
 		}
 		if !inline {
-			io.WriteString(w, "}")
+			_, _ = io.WriteString(w, "}")
 		}
 	}
 }
