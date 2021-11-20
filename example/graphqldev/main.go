@@ -1,3 +1,5 @@
+//go:build ignore
+
 // graphqldev is a test program currently being used for developing graphql package.
 // It performs queries against a local test GraphQL server instance.
 //
