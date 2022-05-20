@@ -89,6 +89,7 @@ func TestName_ToMixedCaps(t *testing.T) {
 		{in: ident.Name{"client", "Mutation", "Id"}, want: "ClientMutationID"},
 		{in: ident.Name{"CLIENT", "MUTATION", "ID"}, want: "ClientMutationID"},
 		{in: ident.Name{"github", "logo"}, want: "GitHubLogo"},
+		{in: ident.Name{"AZURE", "DEVOPS"}, want: "AzureDevOps"},
 	}
 	for _, tc := range tests {
 		got := tc.in.ToMixedCaps()
