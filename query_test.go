@@ -188,6 +188,65 @@ func TestConstructQuery(t *testing.T) {
 			},
 			want: `query($issueNumber:Int!$repositoryName:String!$repositoryOwner:String!){repository(owner: $repositoryOwner, name: $repositoryName){issue(number: $issueNumber){reactionGroups{users(first:10){nodes{login}}}}}}`,
 		},
+		// check test above works with repository inner map
+		{
+			inV: func() interface{} {
+				type query struct {
+					Repository [][2]interface{} `graphql:"repository(owner: $repositoryOwner, name: $repositoryName)"`
+				}
+				type issue struct {
+					ReactionGroups []struct {
+						Users struct {
+							Nodes []struct {
+								Login String
+							}
+						} `graphql:"users(first:10)"`
+					}
+				}
+				return query{Repository: [][2]interface{}{
+					{"issue(number: $issueNumber)", issue{}},
+				}}
+			}(),
+			inVariables: map[string]interface{}{
+				"repositoryOwner": String("shurcooL-test"),
+				"repositoryName":  String("test-repo"),
+				"issueNumber":     Int(1),
+			},
+			want: `query($issueNumber:Int!$repositoryName:String!$repositoryOwner:String!){repository(owner: $repositoryOwner, name: $repositoryName){issue(number: $issueNumber){reactionGroups{users(first:10){nodes{login}}}}}}`,
+		},
+		// check inner maps work inside slices
+		{
+			inV: func() interface{} {
+				type query struct {
+					Repository [][2]interface{} `graphql:"repository(owner: $repositoryOwner, name: $repositoryName)"`
+				}
+				type issue struct {
+					ReactionGroups []struct {
+						Users [][2]interface{} `graphql:"users(first:10)"`
+					}
+				}
+				type nodes []struct {
+					Login String
+				}
+				return query{Repository: [][2]interface{}{
+					{"issue(number: $issueNumber)", issue{
+						ReactionGroups: []struct {
+							Users [][2]interface{} `graphql:"users(first:10)"`
+						}{
+							{Users: [][2]interface{}{
+								{"nodes", nodes{}},
+							}},
+						},
+					}},
+				}}
+			}(),
+			inVariables: map[string]interface{}{
+				"repositoryOwner": String("shurcooL-test"),
+				"repositoryName":  String("test-repo"),
+				"issueNumber":     Int(1),
+			},
+			want: `query($issueNumber:Int!$repositoryName:String!$repositoryOwner:String!){repository(owner: $repositoryOwner, name: $repositoryName){issue(number: $issueNumber){reactionGroups{users(first:10){nodes{login}}}}}}`,
+		},
 		// Embedded structs without graphql tag should be inlined in query.
 		{
 			inV: func() interface{} {
@@ -236,6 +295,14 @@ func TestConstructQuery(t *testing.T) {
 	}
 }
 
+type CreateUser struct {
+	Login string
+}
+
+type DeleteUser struct {
+	Login string
+}
+
 func TestConstructMutation(t *testing.T) {
 	tests := []struct {
 		inV         interface{}
@@ -261,6 +328,17 @@ func TestConstructMutation(t *testing.T) {
 				},
 			},
 			want: `mutation($input:AddReactionInput!){addReaction(input:$input){subject{reactionGroups{users{totalCount}}}}}`,
+		},
+		{
+			inV: [][2]interface{}{
+				{"createUser(login:$login1)", &CreateUser{}},
+				{"deleteUser(login:$login2)", &DeleteUser{}},
+			},
+			inVariables: map[string]interface{}{
+				"login1": String("grihabor"),
+				"login2": String("diman"),
+			},
+			want: "mutation($login1:String!$login2:String!){createUser(login:$login1){login}deleteUser(login:$login2){login}}",
 		},
 	}
 	for _, tc := range tests {
