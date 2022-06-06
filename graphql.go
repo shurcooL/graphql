@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -16,6 +17,7 @@ import (
 type Client struct {
 	url        string // GraphQL server URL.
 	httpClient *http.Client
+	logger     io.Writer
 }
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
@@ -28,6 +30,11 @@ func NewClient(url string, httpClient *http.Client) *Client {
 		url:        url,
 		httpClient: httpClient,
 	}
+}
+
+// SetLogger set verbose logger
+func (c *Client) SetLogger(l io.Writer) {
+	c.logger = l
 }
 
 // Query executes a single GraphQL query request,
@@ -65,6 +72,9 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	if err != nil {
 		return err
 	}
+	if c.logger != nil {
+		c.logger.Write(append([]byte("request:\n\t"), buf.Bytes()...))
+	}
 	resp, err := ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
 	if err != nil {
 		return err
@@ -85,6 +95,9 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 		return err
 	}
 	if out.Data != nil {
+		if c.logger != nil {
+			c.logger.Write(append([]byte("reply:\n\t"), (*out.Data)...))
+		}
 		err := jsonutil.UnmarshalGraphQL(*out.Data, v)
 		if err != nil {
 			// TODO: Consider including response body in returned error, if deemed helpful.
