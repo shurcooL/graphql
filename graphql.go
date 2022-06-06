@@ -63,32 +63,40 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(in)
 	if err != nil {
-		return err
+		return JSONMarshalError(err)
 	}
 	resp, err := ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
 	if err != nil {
-		return err
+		return HTTPRequestError(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
+		err := HTTPResponseError{
+			Status: resp.StatusCode,
+		}
+		body, e := ioutil.ReadAll(resp.Body)
+		if e != nil {
+			err.Err = e
+		} else {
+			err.Body = body
+		}
+		return err
 	}
 	var out struct {
 		Data   *json.RawMessage
-		Errors errors
+		Errors Errors
 		//Extensions interface{} // Unused.
 	}
 	err = json.NewDecoder(resp.Body).Decode(&out)
 	if err != nil {
 		// TODO: Consider including response body in returned error, if deemed helpful.
-		return err
+		return JSONUnmarshalError(err)
 	}
 	if out.Data != nil {
 		err := jsonutil.UnmarshalGraphQL(*out.Data, v)
 		if err != nil {
 			// TODO: Consider including response body in returned error, if deemed helpful.
-			return err
+			return UnmarshalError(err)
 		}
 	}
 	if len(out.Errors) > 0 {
@@ -97,21 +105,52 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	return nil
 }
 
-// errors represents the "errors" array in a response from a GraphQL server.
+// JSONMarshalError represents the JSON Marshal error
+// when encoding the request body.
+type JSONMarshalError error
+
+// JSONUnmarshalError represents the JSON Unmarshal error
+// when decoding the response body.
+type JSONUnmarshalError error
+
+// HTTPRequestError represents the http client error
+// when sending the request.
+type HTTPRequestError error
+
+// HTTPResponseError represents the http client error
+// when the response has a non-200 status code.
+type HTTPResponseError struct {
+	Status int
+	Body   []byte
+	Err    error
+}
+
+// UnmarshalError represents the JSON Unmarshal error
+// when decoding the GraphQL response data.
+type UnmarshalError error
+
+// Errors represents the "errors" array in a response from a GraphQL server.
 // If returned via error interface, the slice is expected to contain at least 1 element.
 //
 // Specification: https://facebook.github.io/graphql/#sec-Errors.
-type errors []struct {
+type Errors []struct {
 	Message   string
 	Locations []struct {
 		Line   int
 		Column int
 	}
+	Path []interface{}
+	Type string
 }
 
 // Error implements error interface.
-func (e errors) Error() string {
+func (e Errors) Error() string {
 	return e[0].Message
+}
+
+// Error implements error interface.
+func (e HTTPResponseError) Error() string {
+	return fmt.Sprintf("non-200 OK status code: %d body: %q", e.Status, e.Body)
 }
 
 type operationType uint8

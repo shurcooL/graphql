@@ -117,7 +117,7 @@ func TestClient_Query_errorStatusCode(t *testing.T) {
 	if err == nil {
 		t.Fatal("got error: nil, want: non-nil")
 	}
-	if got, want := err.Error(), `non-200 OK status code: 500 Internal Server Error body: "important message\n"`; got != want {
+	if got, want := err.Error(), `non-200 OK status code: 500 body: "important message\n"`; got != want {
 		t.Errorf("got error: %v, want: %v", got, want)
 	}
 	if q.User.Name != "" {
