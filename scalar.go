@@ -1,5 +1,9 @@
 package graphql
 
+import (
+	"fmt"
+)
+
 // Note: These custom types are meant to be used in queries for now.
 // But the plan is to switch to using native Go types (string, int, bool, time.Time, etc.).
 // See https://github.com/shurcooL/githubv4/issues/9 for details.
@@ -49,3 +53,16 @@ func NewInt(v Int) *Int { return &v }
 
 // NewString is a helper to make a new *String.
 func NewString(v String) *String { return &v }
+
+// GithubError is error to contain http status code and body
+type GithubError struct {
+	Err        error
+	Status     string
+	StatusCode int
+	Body       []byte
+}
+
+// Error is method inherited from error interface
+func (m *GithubError) Error() string {
+	return fmt.Sprintf("non-200 OK status code: %v body: %q", m.Status, m.Body)
+}

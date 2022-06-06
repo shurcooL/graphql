@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/shurcooL/graphql/internal/jsonutil"
+	"github.com/leslie-qiwa/graphql/internal/jsonutil"
 	"golang.org/x/net/context/ctxhttp"
 )
 
@@ -16,6 +16,7 @@ import (
 type Client struct {
 	url        string // GraphQL server URL.
 	httpClient *http.Client
+	logger     io.Writer
 }
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
@@ -28,6 +29,11 @@ func NewClient(url string, httpClient *http.Client) *Client {
 		url:        url,
 		httpClient: httpClient,
 	}
+}
+
+// SetLogger set verbose logger
+func (c *Client) SetLogger(l io.Writer) {
+	c.logger = l
 }
 
 // Query executes a single GraphQL query request,
@@ -65,14 +71,17 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	if err != nil {
 		return err
 	}
+	if c.logger != nil {
+		c.logger.Write(append([]byte("request:\n\t"), buf.Bytes()...))
+	}
 	resp, err := ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
+		body, err := ioutil.ReadAll(resp.Body)
+		return &GithubError{Status: resp.Status, StatusCode: resp.StatusCode, Body: body, Err: err}
 	}
 	var out struct {
 		Data   *json.RawMessage
@@ -85,6 +94,9 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 		return err
 	}
 	if out.Data != nil {
+		if c.logger != nil {
+			c.logger.Write(append([]byte("reply:\n\t"), (*out.Data)...))
+		}
 		err := jsonutil.UnmarshalGraphQL(*out.Data, v)
 		if err != nil {
 			// TODO: Consider including response body in returned error, if deemed helpful.
