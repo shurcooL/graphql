@@ -153,6 +153,40 @@ func TestClient_Query_emptyVariables(t *testing.T) {
 	}
 }
 
+func TestClient_QueryWithExtensions(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, req *http.Request) {
+		body := mustRead(req.Body)
+		if got, want := body, `{"query":"{user{name}}"}`+"\n"; got != want {
+			t.Errorf("got body: %v, want %v", got, want)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		mustWrite(w, `{"data": {"user": {"name": "Gopher"}}, "extensions": {"cost": {"actualQueryCost":50}}}`)
+	})
+	client := graphql.NewClient("/graphql", &http.Client{Transport: localRoundTripper{handler: mux}})
+
+	var q struct {
+		User struct {
+			Name string
+		}
+	}
+	var e struct {
+		Cost struct {
+			ActualQueryCost int
+		}
+	}
+	err := client.QueryWithExtensions(context.Background(), &q, map[string]interface{}{}, &e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := q.User.Name, "Gopher"; got != want {
+		t.Errorf("got q.User.Name: %q, want: %q", got, want)
+	}
+	if got, want := e.Cost.ActualQueryCost, 50; got != want {
+		t.Errorf("got e.QueryCost: %q, want: %q", got, want)
+	}
+}
+
 // localRoundTripper is an http.RoundTripper that executes HTTP transactions
 // by using handler directly, instead of going over an HTTP connection.
 type localRoundTripper struct {
