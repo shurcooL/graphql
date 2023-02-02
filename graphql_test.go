@@ -2,6 +2,7 @@ package graphql_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -96,6 +97,65 @@ func TestClient_Query_noDataWithErrorResponse(t *testing.T) {
 	if got, want := err.Error(), "Field 'user' is missing required arguments: login"; got != want {
 		t.Errorf("got error: %v, want: %v", got, want)
 	}
+	if q.User.Name != "" {
+		t.Errorf("got non-empty q.User.Name: %v", q.User.Name)
+	}
+}
+
+func TestClient_Query_noDataWithErrorAndExtensionsResponse(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		mustWrite(w, `{
+			"errors": [
+				{
+					"message": "Field 'user' is missing required arguments: login",
+					"locations": [
+						{
+							"line": 7,
+							"column": 3
+						}
+					]
+				}
+			],
+			"extensions": {
+				"code": "MISSING_ARGUMENTS"
+			}
+		}`)
+	})
+	client := graphql.NewClient("/graphql", &http.Client{Transport: localRoundTripper{handler: mux}})
+
+	var q struct {
+		User struct {
+			Name graphql.String
+		}
+	}
+	err := client.Query(context.Background(), &q, nil)
+
+	if err == nil {
+		t.Fatal("got error: nil, want: non-nil")
+	}
+
+	if got, want := err.Error(), "Field 'user' is missing required arguments: login"; got != want {
+		t.Errorf("got error: %v, want: %v", got, want)
+	}
+
+	var graphErr graphql.ErrorsWithExtensions
+	if !errors.As(err, &graphErr) {
+		t.Fatalf("got error: %T, want: %T", err, graphErr)
+	}
+
+	extensions := graphErr.Extensions()
+	asMap, ok := extensions.(map[string]interface{})
+
+	if !ok {
+		t.Fatalf("got error: %T, want: %T", graphErr.Extensions(), asMap)
+	}
+
+	if got, want := asMap["code"], "MISSING_ARGUMENTS"; got != want {
+		t.Errorf("got error: %v, want: %v", got, want)
+	}
+
 	if q.User.Name != "" {
 		t.Errorf("got non-empty q.User.Name: %v", q.User.Name)
 	}
