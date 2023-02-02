@@ -74,11 +74,13 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 		body, _ := ioutil.ReadAll(resp.Body)
 		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
 	}
+
 	var out struct {
-		Data   *json.RawMessage
-		Errors errors
-		//Extensions interface{} // Unused.
+		Data       *json.RawMessage
+		Errors     errors
+		Extensions interface{}
 	}
+
 	err = json.NewDecoder(resp.Body).Decode(&out)
 	if err != nil {
 		// TODO: Consider including response body in returned error, if deemed helpful.
@@ -91,9 +93,15 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 			return err
 		}
 	}
+
 	if len(out.Errors) > 0 {
+		if out.Extensions != nil {
+			return newErrorsWithExtensions(out.Errors, out.Extensions)
+		}
+
 		return out.Errors
 	}
+
 	return nil
 }
 
@@ -121,3 +129,20 @@ const (
 	mutationOperation
 	//subscriptionOperation // Unused.
 )
+
+type ErrorsWithExtensions struct {
+	errors     errors
+	extensions interface{}
+}
+
+func newErrorsWithExtensions(err errors, extensions interface{}) ErrorsWithExtensions {
+	return ErrorsWithExtensions{errors: err, extensions: extensions}
+}
+
+func (e ErrorsWithExtensions) Error() string {
+	return e.errors[0].Message
+}
+
+func (e ErrorsWithExtensions) Extensions() interface{} {
+	return e.extensions
+}
