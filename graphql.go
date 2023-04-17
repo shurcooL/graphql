@@ -44,6 +44,12 @@ func (c *Client) Mutate(ctx context.Context, m interface{}, variables map[string
 	return c.do(ctx, mutationOperation, m, variables)
 }
 
+type output struct {
+	Data   *json.RawMessage
+	Errors errors
+	//Extensions interface{} // Unused.
+}
+
 // do executes a single GraphQL operation.
 func (c *Client) do(ctx context.Context, op operationType, v interface{}, variables map[string]interface{}) error {
 	var query string
@@ -74,11 +80,7 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 		body, _ := ioutil.ReadAll(resp.Body)
 		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
 	}
-	var out struct {
-		Data   *json.RawMessage
-		Errors errors
-		//Extensions interface{} // Unused.
-	}
+	var out = new(output)
 	err = json.NewDecoder(resp.Body).Decode(&out)
 	if err != nil {
 		// TODO: Consider including response body in returned error, if deemed helpful.
@@ -95,6 +97,86 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 		return out.Errors
 	}
 	return nil
+}
+
+// QueryMap runs a query returns a map representation of the result rather than filling in the queryInterface
+func (c *Client) QueryMap(ctx context.Context, queryInterface interface{}, variables map[string]interface{}) (string, *map[string]interface{}, error) {
+	var query string
+	query = constructQuery(queryInterface, variables)
+
+	in := struct {
+		Query     string                 `json:"query"`
+		Variables map[string]interface{} `json:"variables,omitempty"`
+	}{
+		Query:     query,
+		Variables: variables,
+	}
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(in)
+	if err != nil {
+		return query, nil, err
+	}
+	resp, err := ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
+	if err != nil {
+		return query, nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return query, nil, fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
+	}
+	var out = new(output)
+	var outputObject interface{}
+	err = json.NewDecoder(resp.Body).Decode(&out)
+	if err != nil {
+		// TODO: Consider including response body in returned error, if deemed helpful.
+		return query, nil, err
+	}
+	if out.Data != nil {
+		err := json.Unmarshal(*out.Data, &outputObject)
+		if err != nil {
+			// TODO: Consider including response body in returned error, if deemed helpful.
+			return query, nil, err
+		}
+	}
+	outputMap := outputObject.(map[string]interface{})
+	return query, &outputMap, nil
+}
+
+// QueryRawMessage runs a query returns a RawMessage (or []byte) representation of the result rather than filling in the queryInterface
+func (c *Client) QueryRawMessage(ctx context.Context, queryInterface interface{}, variables map[string]interface{}) (string, *json.RawMessage, error) {
+	var query string
+	query = constructQuery(queryInterface, variables)
+
+	in := struct {
+		Query     string                 `json:"query"`
+		Variables map[string]interface{} `json:"variables,omitempty"`
+	}{
+		Query:     query,
+		Variables: variables,
+	}
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(in)
+	if err != nil {
+		return query, nil, err
+	}
+	resp, err := ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
+	if err != nil {
+		return query, nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return query, nil, fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
+	}
+	var out = new(output)
+	err = json.NewDecoder(resp.Body).Decode(&out)
+	if err != nil {
+		// TODO: Consider including response body in returned error, if deemed helpful.
+		return query, nil, err
+	}
+
+	return query, out.Data, nil
 }
 
 // errors represents the "errors" array in a response from a GraphQL server.
