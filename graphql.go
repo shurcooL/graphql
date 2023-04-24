@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/shurcooL/graphql/internal/jsonutil"
@@ -71,7 +71,7 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
 	}
 	var out struct {
