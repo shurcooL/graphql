@@ -8,8 +8,8 @@ import (
 
 func TestConstructQuery(t *testing.T) {
 	tests := []struct {
-		inV         interface{}
-		inVariables map[string]interface{}
+		inV         any
+		inVariables map[string]any
 		want        string
 	}{
 		{
@@ -56,7 +56,7 @@ func TestConstructQuery(t *testing.T) {
 			want: `{repository(owner:"shurcooL-test"name:"test-repo"){databaseId,url,issue(number:1){comments(first:1after:"Y3Vyc29yOjE5NTE4NDI1Ng=="){edges{node{body,author{login},editor{login}},cursor}}}}}`,
 		},
 		{
-			inV: func() interface{} {
+			inV: func() any {
 				type actor struct {
 					Login     String
 					AvatarURL URI
@@ -90,7 +90,7 @@ func TestConstructQuery(t *testing.T) {
 			want: `{repository(owner:"shurcooL-test"name:"test-repo"){databaseId,url,issue(number:1){comments(first:1){edges{node{databaseId,author{login,avatarUrl,url},publishedAt,lastEditedAt,editor{login,avatarUrl,url},body,viewerCanUpdate},cursor}}}}}`,
 		},
 		{
-			inV: func() interface{} {
+			inV: func() any {
 				type actor struct {
 					Login     String
 					AvatarURL URI `graphql:"avatarUrl(size:72)"`
@@ -160,7 +160,7 @@ func TestConstructQuery(t *testing.T) {
 					} `graphql:"issue(number: $issueNumber)"`
 				} `graphql:"repository(owner: $repositoryOwner, name: $repositoryName)"`
 			}{},
-			inVariables: map[string]interface{}{
+			inVariables: map[string]any{
 				"repositoryOwner": String("shurcooL-test"),
 				"repositoryName":  String("test-repo"),
 				"issueNumber":     Int(1),
@@ -181,7 +181,7 @@ func TestConstructQuery(t *testing.T) {
 					} `graphql:"issue(number: $issueNumber)"`
 				} `graphql:"repository(owner: $repositoryOwner, name: $repositoryName)"`
 			}{},
-			inVariables: map[string]interface{}{
+			inVariables: map[string]any{
 				"repositoryOwner": String("shurcooL-test"),
 				"repositoryName":  String("test-repo"),
 				"issueNumber":     Int(1),
@@ -190,7 +190,7 @@ func TestConstructQuery(t *testing.T) {
 		},
 		// Embedded structs without graphql tag should be inlined in query.
 		{
-			inV: func() interface{} {
+			inV: func() any {
 				type actor struct {
 					Login     String
 					AvatarURL URI
@@ -221,7 +221,7 @@ func TestConstructQuery(t *testing.T) {
 				Viewer struct {
 					Login      string
 					CreatedAt  time.Time
-					ID         interface{}
+					ID         any
 					DatabaseID int
 				}
 			}{},
@@ -238,8 +238,8 @@ func TestConstructQuery(t *testing.T) {
 
 func TestConstructMutation(t *testing.T) {
 	tests := []struct {
-		inV         interface{}
-		inVariables map[string]interface{}
+		inV         any
+		inVariables map[string]any
 		want        string
 	}{
 		{
@@ -254,7 +254,7 @@ func TestConstructMutation(t *testing.T) {
 					}
 				} `graphql:"addReaction(input:$input)"`
 			}{},
-			inVariables: map[string]interface{}{
+			inVariables: map[string]any{
 				"input": AddReactionInput{
 					SubjectID: "MDU6SXNzdWUyMzE1MjcyNzk=",
 					Content:   ReactionContentThumbsUp,
@@ -273,44 +273,44 @@ func TestConstructMutation(t *testing.T) {
 
 func TestQueryArguments(t *testing.T) {
 	tests := []struct {
-		in   map[string]interface{}
+		in   map[string]any
 		want string
 	}{
 		{
-			in:   map[string]interface{}{"a": Int(123), "b": NewBoolean(true)},
+			in:   map[string]any{"a": Int(123), "b": NewBoolean(true)},
 			want: "$a:Int!$b:Boolean",
 		},
 		{
-			in: map[string]interface{}{
+			in: map[string]any{
 				"required": []IssueState{IssueStateOpen, IssueStateClosed},
 				"optional": &[]IssueState{IssueStateOpen, IssueStateClosed},
 			},
 			want: "$optional:[IssueState!]$required:[IssueState!]!",
 		},
 		{
-			in: map[string]interface{}{
+			in: map[string]any{
 				"required": []IssueState(nil),
 				"optional": (*[]IssueState)(nil),
 			},
 			want: "$optional:[IssueState!]$required:[IssueState!]!",
 		},
 		{
-			in: map[string]interface{}{
+			in: map[string]any{
 				"required": [...]IssueState{IssueStateOpen, IssueStateClosed},
 				"optional": &[...]IssueState{IssueStateOpen, IssueStateClosed},
 			},
 			want: "$optional:[IssueState!]$required:[IssueState!]!",
 		},
 		{
-			in:   map[string]interface{}{"id": ID("someID")},
+			in:   map[string]any{"id": ID("someID")},
 			want: "$id:ID!",
 		},
 		{
-			in:   map[string]interface{}{"ids": []ID{"someID", "anotherID"}},
+			in:   map[string]any{"ids": []ID{"someID", "anotherID"}},
 			want: `$ids:[ID!]!`,
 		},
 		{
-			in:   map[string]interface{}{"ids": &[]ID{"someID", "anotherID"}},
+			in:   map[string]any{"ids": &[]ID{"someID", "anotherID"}},
 			want: `$ids:[ID!]`,
 		},
 	}
