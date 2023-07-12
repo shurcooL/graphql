@@ -34,18 +34,36 @@ func NewClient(url string, httpClient *http.Client) *Client {
 // with a query derived from q, populating the response into it.
 // q should be a pointer to struct that corresponds to the GraphQL schema.
 func (c *Client) Query(ctx context.Context, q interface{}, variables map[string]interface{}) error {
-	return c.do(ctx, queryOperation, q, variables)
+	return c.do(ctx, queryOperation, q, variables, nil)
+}
+
+// QueryWithExtensions executes a single GraphQL query request,
+// with a query derived from q, populating the response into it.
+// q should be a pointer to struct that corresponds to the GraphQL schema.
+// Additionally, this will capture the extensions from the response.
+// extensions should be a pointer that corresponds to the extensions schema.
+func (c *Client) QueryWithExtensions(ctx context.Context, q interface{}, variables map[string]interface{}, extensions interface{}) error {
+	return c.do(ctx, queryOperation, q, variables, extensions)
 }
 
 // Mutate executes a single GraphQL mutation request,
 // with a mutation derived from m, populating the response into it.
 // m should be a pointer to struct that corresponds to the GraphQL schema.
 func (c *Client) Mutate(ctx context.Context, m interface{}, variables map[string]interface{}) error {
-	return c.do(ctx, mutationOperation, m, variables)
+	return c.do(ctx, mutationOperation, m, variables, nil)
+}
+
+// MutateWithExtensions executes a single GraphQL mutation request,
+// with a mutation derived from m, populating the response into it.
+// m should be a pointer to struct that corresponds to the GraphQL schema.
+// Additionally, this will capture the extensions from the response.
+// extensions should be a pointer that corresponds to the extensions schema.
+func (c *Client) MutateWithExtensions(ctx context.Context, m interface{}, variables map[string]interface{}, extensions interface{}) error {
+	return c.do(ctx, mutationOperation, m, variables, extensions)
 }
 
 // do executes a single GraphQL operation.
-func (c *Client) do(ctx context.Context, op operationType, v interface{}, variables map[string]interface{}) error {
+func (c *Client) do(ctx context.Context, op operationType, v interface{}, variables map[string]interface{}, extensions interface{}) error {
 	var query string
 	switch op {
 	case queryOperation:
@@ -75,9 +93,9 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
 	}
 	var out struct {
-		Data   *json.RawMessage
-		Errors errors
-		//Extensions interface{} // Unused.
+		Data       *json.RawMessage
+		Errors     errors
+		Extensions *json.RawMessage
 	}
 	err = json.NewDecoder(resp.Body).Decode(&out)
 	if err != nil {
@@ -86,6 +104,13 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	}
 	if out.Data != nil {
 		err := jsonutil.UnmarshalGraphQL(*out.Data, v)
+		if err != nil {
+			// TODO: Consider including response body in returned error, if deemed helpful.
+			return err
+		}
+	}
+	if extensions != nil && out.Extensions != nil {
+		err := jsonutil.UnmarshalGraphQL(*out.Extensions, extensions)
 		if err != nil {
 			// TODO: Consider including response body in returned error, if deemed helpful.
 			return err
