@@ -85,7 +85,8 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 		return err
 	}
 	if out.Data != nil {
-		err := jsonutil.UnmarshalGraphQL(*out.Data, v)
+		_, dest := deconstructOperation(v)
+		err := jsonutil.UnmarshalGraphQL(*out.Data, dest)
 		if err != nil {
 			// TODO: Consider including response body in returned error, if deemed helpful.
 			return err

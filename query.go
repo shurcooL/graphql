@@ -10,20 +10,55 @@ import (
 	"github.com/shurcooL/graphql/ident"
 )
 
+type NamedOperation struct {
+	Name     string
+	Document interface{}
+}
+
+func NewNamedOperation(name string, v interface{}) *NamedOperation {
+	return &NamedOperation{
+		Name:     name,
+		Document: v,
+	}
+}
+
+func deconstructOperation(v interface{}) (string, interface{}) {
+	if named, ok := v.(*NamedOperation); ok {
+		return named.Name, named.Document
+	}
+	return "", v
+}
+
 func constructQuery(v interface{}, variables map[string]interface{}) string {
-	query := query(v)
+	queryName, queryDoc := deconstructOperation(v)
+	query := query(queryDoc)
+
+	queryPrefix := "query"
+	if queryName != "" {
+		queryPrefix = "query " + queryName
+	}
+
 	if len(variables) > 0 {
-		return "query(" + queryArguments(variables) + ")" + query
+		return queryPrefix + "(" + queryArguments(variables) + ")" + query
+	} else if queryName != "" {
+		return queryPrefix + query
 	}
 	return query
 }
 
 func constructMutation(v interface{}, variables map[string]interface{}) string {
-	query := query(v)
-	if len(variables) > 0 {
-		return "mutation(" + queryArguments(variables) + ")" + query
+	mutationName, queryDoc := deconstructOperation(v)
+	query := query(queryDoc)
+
+	mutationPrefix := "mutation"
+	if mutationName != "" {
+		mutationPrefix = "mutation " + mutationName
 	}
-	return "mutation" + query
+
+	if len(variables) > 0 {
+		return mutationPrefix + "(" + queryArguments(variables) + ")" + query
+	}
+	return mutationPrefix + query
 }
 
 // queryArguments constructs a minified arguments string for variables.
