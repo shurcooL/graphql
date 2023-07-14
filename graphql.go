@@ -32,19 +32,19 @@ func NewClient(url string, httpClient *http.Client) *Client {
 // Query executes a single GraphQL query request,
 // with a query derived from q, populating the response into it.
 // q should be a pointer to struct that corresponds to the GraphQL schema.
-func (c *Client) Query(ctx context.Context, q interface{}, variables map[string]interface{}) error {
+func (c *Client) Query(ctx context.Context, q any, variables map[string]any) error {
 	return c.do(ctx, queryOperation, q, variables)
 }
 
 // Mutate executes a single GraphQL mutation request,
 // with a mutation derived from m, populating the response into it.
 // m should be a pointer to struct that corresponds to the GraphQL schema.
-func (c *Client) Mutate(ctx context.Context, m interface{}, variables map[string]interface{}) error {
+func (c *Client) Mutate(ctx context.Context, m any, variables map[string]any) error {
 	return c.do(ctx, mutationOperation, m, variables)
 }
 
 // do executes a single GraphQL operation.
-func (c *Client) do(ctx context.Context, op operationType, v interface{}, variables map[string]interface{}) error {
+func (c *Client) do(ctx context.Context, op operationType, v any, variables map[string]any) error {
 	var query string
 	switch op {
 	case queryOperation:
@@ -53,8 +53,8 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 		query = constructMutation(v, variables)
 	}
 	in := struct {
-		Query     string                 `json:"query"`
-		Variables map[string]interface{} `json:"variables,omitempty"`
+		Query     string         `json:"query"`
+		Variables map[string]any `json:"variables,omitempty"`
 	}{
 		Query:     query,
 		Variables: variables,
@@ -81,7 +81,7 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	var out struct {
 		Data   *json.RawMessage
 		Errors errors
-		//Extensions interface{} // Unused.
+		//Extensions any // Unused.
 	}
 	err = json.NewDecoder(resp.Body).Decode(&out)
 	if err != nil {
