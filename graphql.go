@@ -9,13 +9,12 @@ import (
 	"net/http"
 
 	"github.com/shurcooL/graphql/internal/jsonutil"
-	"golang.org/x/net/context/ctxhttp"
 )
 
 // Client is a GraphQL client.
 type Client struct {
-	url        string // GraphQL server URL.
-	httpClient *http.Client
+	url        string       // GraphQL server URL.
+	httpClient *http.Client // Non-nil.
 }
 
 // NewClient creates a GraphQL client targeting the specified GraphQL server URL.
@@ -65,7 +64,12 @@ func (c *Client) do(ctx context.Context, op operationType, v interface{}, variab
 	if err != nil {
 		return err
 	}
-	resp, err := ctxhttp.Post(ctx, c.httpClient, c.url, "application/json", &buf)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, &buf)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
