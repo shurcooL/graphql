@@ -10,6 +10,28 @@ import (
 	"github.com/shurcooL/graphql"
 )
 
+func TestClient_NewClient_nilHTTPClient(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		mustWrite(w, `{"data": {"user": {"name": "Gopher"}}}`)
+	}))
+
+	client := graphql.NewClient(srv.URL, nil)
+
+	var q struct {
+		User struct {
+			Name string
+		}
+	}
+	err := client.Query(context.Background(), &q, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := q.User.Name, "Gopher"; got != want {
+		t.Errorf("got q.User.Name: %q, want: %q", got, want)
+	}
+}
+
 func TestClient_Query_partialDataWithErrorResponse(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/graphql", func(w http.ResponseWriter, req *http.Request) {
@@ -149,6 +171,40 @@ func TestClient_Query_emptyVariables(t *testing.T) {
 	}
 	if got, want := q.User.Name, "Gopher"; got != want {
 		t.Errorf("got q.User.Name: %q, want: %q", got, want)
+	}
+}
+
+func TestClient_Mutate_withVariables(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, req *http.Request) {
+		body := mustRead(req.Body)
+		if got, want := body, `{"query":"mutation($ep:ID!$review:!){createReview(episode: $ep, review: $review){stars}}","variables":{"ep":"JEDI","review":{"Stars":5}}}`+"\n"; got != want {
+			t.Errorf("got body: %v, want %v", got, want)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		mustWrite(w, `{"data": {"createReview": {"stars": 5}}}`)
+	})
+	client := graphql.NewClient("/graphql", &http.Client{Transport: localRoundTripper{handler: mux}})
+
+	var q struct {
+		CreateReview struct {
+			Stars graphql.Int
+		} `graphql:"createReview(episode: $ep, review: $review)"`
+	}
+	variables := map[string]any{
+		"ep": "JEDI",
+		"review": struct {
+			Stars graphql.Int
+		}{
+			Stars: graphql.Int(5),
+		},
+	}
+	err := client.Mutate(context.Background(), &q, variables)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := q.CreateReview.Stars, 5; int(got) != want {
+		t.Errorf("got q.CreateReview.Stars: %d, want: %d", got, want)
 	}
 }
 
