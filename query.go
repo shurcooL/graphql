@@ -46,7 +46,7 @@ func queryArguments(variables map[string]any) string {
 		writeArgumentType(&buf, reflect.TypeOf(variables[k]), true)
 		// Don't insert a comma here.
 		// Commas in GraphQL are insignificant, and we want minified output.
-		// See https://facebook.github.io/graphql/October2016/#sec-Insignificant-Commas.
+		// See https://spec.graphql.org/October2021/#sec-Insignificant-Commas.
 	}
 	return buf.String()
 }
