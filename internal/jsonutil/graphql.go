@@ -179,7 +179,7 @@ func (d *decoder) decode() error {
 						continue
 					}
 					for i := 0; i < v.NumField(); i++ {
-						if isGraphQLFragment(v.Type().Field(i)) || v.Type().Field(i).Anonymous {
+						if isGraphQLFragment(v.Type().Field(i).Tag) || v.Type().Field(i).Anonymous {
 							// Add GraphQL fragment or embedded struct.
 							d.vs = append(d.vs, []reflect.Value{v.Field(i)})
 							frontier = append(frontier, v.Field(i))
@@ -256,24 +256,23 @@ func (d *decoder) popAllVs() {
 // that matches GraphQL name, or invalid reflect.Value if none found.
 func fieldByGraphQLName(v reflect.Value, name string) reflect.Value {
 	for i := 0; i < v.NumField(); i++ {
-		if v.Type().Field(i).PkgPath != "" {
+		f := v.Type().Field(i)
+		if f.PkgPath != "" {
 			// Skip unexported field.
 			continue
 		}
-		if hasGraphQLName(v.Type().Field(i), name) {
+		if hasGraphQLName(f.Name, f.Tag, name) {
 			return v.Field(i)
 		}
 	}
 	return reflect.Value{}
 }
 
-// hasGraphQLName reports whether struct field f has GraphQL name.
-func hasGraphQLName(f reflect.StructField, name string) bool {
-	value, ok := f.Tag.Lookup("graphql")
+// hasGraphQLName reports whether struct field with name fname and tag ftag has GraphQL name.
+func hasGraphQLName(fname string, ftag reflect.StructTag, name string) bool {
+	value, ok := ftag.Lookup("graphql")
 	if !ok {
-		// TODO: caseconv package is relatively slow. Optimize it, then consider using it here.
-		//return caseconv.MixedCapsToLowerCamelCase(f.Name) == name
-		return strings.EqualFold(f.Name, name)
+		return strings.EqualFold(fname, name)
 	}
 	value = strings.TrimSpace(value) // TODO: Parse better.
 	if strings.HasPrefix(value, "...") {
@@ -288,9 +287,9 @@ func hasGraphQLName(f reflect.StructField, name string) bool {
 	return strings.TrimSpace(value) == name
 }
 
-// isGraphQLFragment reports whether struct field f is a GraphQL fragment.
-func isGraphQLFragment(f reflect.StructField) bool {
-	value, ok := f.Tag.Lookup("graphql")
+// isGraphQLFragment reports whether struct tag is a GraphQL fragment.
+func isGraphQLFragment(ftag reflect.StructTag) bool {
+	value, ok := ftag.Lookup("graphql")
 	if !ok {
 		return false
 	}
