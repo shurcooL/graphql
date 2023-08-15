@@ -3,7 +3,6 @@ package graphql
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"reflect"
 	"sort"
 
@@ -40,9 +39,9 @@ func queryArguments(variables map[string]any) string {
 
 	var buf bytes.Buffer
 	for _, k := range keys {
-		io.WriteString(&buf, "$")
-		io.WriteString(&buf, k)
-		io.WriteString(&buf, ":")
+		buf.WriteByte('$')
+		buf.WriteString(k)
+		buf.WriteByte(':')
 		writeArgumentType(&buf, reflect.TypeOf(variables[k]), true)
 		// Don't insert a comma here.
 		// Commas in GraphQL are insignificant, and we want minified output.
@@ -54,31 +53,31 @@ func queryArguments(variables map[string]any) string {
 // writeArgumentType writes a minified GraphQL type for t to w.
 // value indicates whether t is a value (required) type or pointer (optional) type.
 // If value is true, then "!" is written at the end of t.
-func writeArgumentType(w io.Writer, t reflect.Type, value bool) {
+func writeArgumentType(buf *bytes.Buffer, t reflect.Type, value bool) {
 	if t.Kind() == reflect.Ptr {
 		// Pointer is an optional type, so no "!" at the end of the pointer's underlying type.
-		writeArgumentType(w, t.Elem(), false)
+		writeArgumentType(buf, t.Elem(), false)
 		return
 	}
 
 	switch t.Kind() {
 	case reflect.Slice, reflect.Array:
 		// List. E.g., "[Int]".
-		io.WriteString(w, "[")
-		writeArgumentType(w, t.Elem(), true)
-		io.WriteString(w, "]")
+		buf.WriteByte('[')
+		writeArgumentType(buf, t.Elem(), true)
+		buf.WriteByte(']')
 	default:
 		// Named type. E.g., "Int".
 		name := t.Name()
 		if name == "string" { // HACK: Workaround for https://github.com/shurcooL/githubv4/issues/12.
 			name = "ID"
 		}
-		io.WriteString(w, name)
+		buf.WriteString(name)
 	}
 
 	if value {
 		// Value is a required type, so add "!" to the end.
-		io.WriteString(w, "!")
+		buf.WriteByte('!')
 	}
 }
 
@@ -94,36 +93,36 @@ func query(v any) string {
 
 // writeQuery writes a minified query for t to w.
 // If inline is true, the struct fields of t are inlined into parent struct.
-func writeQuery(w io.Writer, t reflect.Type, inline bool) {
+func writeQuery(buf *bytes.Buffer, t reflect.Type, inline bool) {
 	switch t.Kind() {
 	case reflect.Ptr, reflect.Slice:
-		writeQuery(w, t.Elem(), false)
+		writeQuery(buf, t.Elem(), false)
 	case reflect.Struct:
 		// If the type implements json.Unmarshaler, it's a scalar. Don't expand it.
 		if reflect.PtrTo(t).Implements(jsonUnmarshaler) {
 			return
 		}
 		if !inline {
-			io.WriteString(w, "{")
+			buf.WriteByte('{')
 		}
 		for i := 0; i < t.NumField(); i++ {
 			if i != 0 {
-				io.WriteString(w, ",")
+				buf.WriteByte(',')
 			}
 			f := t.Field(i)
 			value, ok := f.Tag.Lookup("graphql")
 			inlineField := f.Anonymous && !ok
 			if !inlineField {
 				if ok {
-					io.WriteString(w, value)
+					buf.WriteString(value)
 				} else {
-					io.WriteString(w, ident.ParseMixedCaps(f.Name).ToLowerCamelCase())
+					buf.WriteString(ident.ParseMixedCaps(f.Name).ToLowerCamelCase())
 				}
 			}
-			writeQuery(w, f.Type, inlineField)
+			writeQuery(buf, f.Type, inlineField)
 		}
 		if !inline {
-			io.WriteString(w, "}")
+			buf.WriteByte('}')
 		}
 	}
 }
