@@ -41,7 +41,7 @@ func (c *Client) Query(ctx context.Context, q any, variables map[string]any) err
 // q should be a pointer to struct that corresponds to the GraphQL schema.
 // Additionally, this will capture the extensions from the response.
 // extensions should be a pointer that corresponds to the extensions schema.
-func (c *Client) QueryWithExtensions(ctx context.Context, q interface{}, variables map[string]interface{}, extensions interface{}) error {
+func (c *Client) QueryWithExtensions(ctx context.Context, q interface{}, variables map[string]interface{}, extensions any) error {
 	return c.do(ctx, queryOperation, q, variables, extensions)
 }
 
@@ -57,7 +57,7 @@ func (c *Client) Mutate(ctx context.Context, m any, variables map[string]any) er
 // m should be a pointer to struct that corresponds to the GraphQL schema.
 // Additionally, this will capture the extensions from the response.
 // extensions should be a pointer that corresponds to the extensions schema.
-func (c *Client) MutateWithExtensions(ctx context.Context, m interface{}, variables map[string]interface{}, extensions interface{}) error {
+func (c *Client) MutateWithExtensions(ctx context.Context, m interface{}, variables map[string]interface{}, extensions any) error {
 	return c.do(ctx, mutationOperation, m, variables, extensions)
 }
 
