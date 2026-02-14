@@ -181,6 +181,7 @@ func isTwoInitialisms(word string) (string, string, bool) {
 // For instance, "ID" is fine (Freudian code is rare), but "AND" is not.
 var initialisms = map[string]struct{}{
 	"ACL":   {},
+	"ANSI":  {},
 	"API":   {},
 	"ASCII": {},
 	"CPU":   {},
