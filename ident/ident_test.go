@@ -42,6 +42,9 @@ func TestParseMixedCaps(t *testing.T) {
 		{in: "HTTPSSQL", want: ident.Name{"HTTPS", "SQL"}},
 		{in: "UserIDs", want: ident.Name{"User", "IDs"}},
 		{in: "TeamIDsSorted", want: ident.Name{"Team", "IDs", "Sorted"}},
+		{in: "AnS3Variable", want: ident.Name{"An", "S3", "Variable"}},
+		{in: "Have86IDs", want: ident.Name{"Have", "86", "IDs"}},
+		{in: "95thPercentile", want: ident.Name{"95th", "Percentile"}},
 	}
 	for _, tc := range tests {
 		got := ident.ParseMixedCaps(tc.in)

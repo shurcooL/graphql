@@ -23,6 +23,12 @@ func ParseMixedCaps(name string) Name {
 		eow := false // Whether we hit the end of a word.
 		if i+1 == len(runes) {
 			eow = true
+		} else if unicode.IsNumber(runes[i]) && unicode.IsUpper(runes[i+1]) {
+			// number -> Upper.
+			eow = true
+		} else if unicode.IsLower(runes[i]) && unicode.IsNumber(runes[i+1]) {
+			// lower -> number.
+			eow = true
 		} else if unicode.IsLower(runes[i]) && unicode.IsUpper(runes[i+1]) {
 			// lower -> Upper.
 			eow = true
