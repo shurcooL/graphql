@@ -76,7 +76,10 @@ func (c *Client) do(ctx context.Context, op operationType, v any, variables map[
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
+		return HTTPError{
+			StatusCode: resp.StatusCode,
+			Body:       string(body),
+		}
 	}
 	var out struct {
 		Data   *json.RawMessage
@@ -99,6 +102,18 @@ func (c *Client) do(ctx context.Context, op operationType, v any, variables map[
 		return out.Errors
 	}
 	return nil
+}
+
+// HTTPError represents a non-200 HTTP response from a GraphQL server.
+type HTTPError struct {
+	StatusCode int
+	Body       string
+}
+
+// Error implements the error interface.
+// The format is unchanged from the previous unstructured error for backwards compatibility.
+func (e HTTPError) Error() string {
+	return fmt.Sprintf("non-200 OK status code: %d %s body: %q", e.StatusCode, http.StatusText(e.StatusCode), e.Body)
 }
 
 // errors represents the "errors" array in a response from a GraphQL server.

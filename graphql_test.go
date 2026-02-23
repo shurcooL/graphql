@@ -2,6 +2,7 @@ package graphql_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -121,6 +122,40 @@ func TestClient_Query_errorStatusCode(t *testing.T) {
 	}
 	if q.User.Name != "" {
 		t.Errorf("got non-empty q.User.Name: %v", q.User.Name)
+	}
+}
+
+// Test that non-200 responses produce an error with a structured HTTP status code,
+// so callers can distinguish e.g. 401 from 500 without parsing the error string.
+func TestClient_Query_errorStatusCode_structured(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, req *http.Request) {
+		http.Error(w, "important message", http.StatusInternalServerError)
+	})
+	client := graphql.NewClient("/graphql", &http.Client{Transport: localRoundTripper{handler: mux}})
+
+	var q struct {
+		User struct {
+			Name graphql.String
+		}
+	}
+	err := client.Query(context.Background(), &q, nil)
+	if err == nil {
+		t.Fatal("got error: nil, want: non-nil")
+	}
+
+	// Backwards compatibility: Error() string unchanged.
+	if got, want := err.Error(), `non-200 OK status code: 500 Internal Server Error body: "important message\n"`; got != want {
+		t.Errorf("got error: %v, want: %v", got, want)
+	}
+
+	// New: callers can extract the status code.
+	var httpErr graphql.HTTPError
+	if !errors.As(err, &httpErr) {
+		t.Fatal("error does not match graphql.HTTPError")
+	}
+	if httpErr.StatusCode != http.StatusInternalServerError {
+		t.Errorf("got status code: %d, want: %d", httpErr.StatusCode, http.StatusInternalServerError)
 	}
 }
 
